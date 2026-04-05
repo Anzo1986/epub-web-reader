@@ -17,7 +17,7 @@ let currentUtterance = null;
 let uiTimer = null;
 let currentLanguage = 'en';
 
-console.log("App Version: v8.0 (Refined Toggle & Position)");
+console.log("App Version: v10.0 (Clean Build)");
 
 function hideUI() {
     document.body.classList.add('hidden-ui');
