@@ -17,9 +17,7 @@ let currentUtterance = null;
 let uiTimer = null;
 let currentLanguage = 'en';
 
-let touchStartPos = { x: 0, y: 0, time: 0 };
-
-console.log("App Version: v14.0 (Gesture & Media Fix)");
+console.log("App Version: v15.0 (Stability & Simplified UI)");
 
 function hideUI() {
     document.body.classList.add('hidden-ui');
@@ -124,46 +122,43 @@ function openBook(bookData, filename) {
         width: "100%",
         height: "100%",
         flow: "paginated",
-        manager: "default",
-        sandbox: "allow-same-origin allow-scripts allow-forms allow-popups" // Moved from hook to constructor
+        manager: "default"
     });
 
-    // Fix for Blob 404 images and Gesture Bubbling
+    // Stability Fix: Direct sandbox handling via iframe discovery
+    rendition.on("rendered", (e, iframe) => {
+        const iframeElement = viewer.querySelector('iframe');
+        if (iframeElement) {
+            // Re-apply sandbox if missing, but keep it minimal to avoid chapter jumps
+            iframeElement.setAttribute('sandbox', 'allow-same-origin allow-scripts');
+        }
+        
+        // Simple UI toggle: if any content is touched/clicked, reset timer
+        const iframeDoc = iframe.document;
+        if (iframeDoc) {
+            iframeDoc.addEventListener('touchstart', () => resetUITimer());
+        }
+    });
+
+    // Robust Image Fix: Repair broken blob paths without using <base>
     rendition.hooks.content.register((contents) => {
         const doc = contents.document;
-        const head = doc.querySelector('head');
-
-        // Inject <base> tag to help browser resolve blob URLs in srcdoc
-        if (head && !doc.querySelector('base')) {
-            const base = doc.createElement('base');
-            base.setAttribute('href', window.location.href);
-            head.appendChild(base);
-        }
-
-        // Gesture Detection: Differentiate Tap from Swipe
-        if (doc) {
-            doc.addEventListener('touchstart', (e) => {
-                const touch = e.touches[0];
-                touchStartPos = {
-                    x: touch.clientX,
-                    y: touch.clientY,
-                    time: Date.now()
-                };
-                resetUITimer();
-            });
-
-            doc.addEventListener('touchend', (e) => {
-                const touch = e.changedTouches[0];
-                const dx = Math.abs(touch.clientX - touchStartPos.x);
-                const dy = Math.abs(touch.clientY - touchStartPos.y);
-                const dt = Date.now() - touchStartPos.time;
-
-                // Threshold: If finger moved < 15px and it was < 300ms, it's a Tap
-                if (dx < 15 && dy < 15 && dt < 300) {
-                    showUI();
+        const fixImages = () => {
+            const images = doc.querySelectorAll('img');
+            images.forEach(img => {
+                const src = img.getAttribute('src');
+                if (src && src.includes('blob:https')) {
+                    // Strip the origin prefix if the browser added it incorrectly
+                    const actualBlob = src.match(/blob:https:[^\s"']+/);
+                    if (actualBlob && src !== actualBlob[0]) {
+                        img.src = actualBlob[0];
+                    }
                 }
             });
-        }
+        };
+        fixImages();
+        // Fallback for dynamic loads
+        setTimeout(fixImages, 100);
     });
 
     // Dark mode for the iframe content
@@ -178,7 +173,7 @@ function openBook(bookData, filename) {
     book.ready.then(() => {
         const savedLocation = localStorage.getItem(`epub-location-${filename}`);
         
-        // Wait a bit for the iframe to settle
+        // 200ms delay for iframe shell stability
         setTimeout(() => {
             if (savedLocation) {
                 console.log('Jumping to saved location:', savedLocation);
@@ -191,9 +186,8 @@ function openBook(bookData, filename) {
             } else {
                 rendition.display();
             }
-        }, 250); 
+        }, 200); 
 
-        // Generate locations for progress bar
         book.locations.generate(1024).then(() => {
             updatePageInfo();
         });
@@ -204,9 +198,9 @@ function openBook(bookData, filename) {
         updatePageInfo();
     });
 
-    // Default touch/click handler for non-book areas
+    // Only show UI on a clear click (epub.js handles tap-to-click on mobile)
     rendition.on("click", (e) => {
-        // Fallback if touch event didn't fire from inside
+        showUI();
     });
 
     // Bind events directly to the iframe document for reliability
@@ -307,6 +301,11 @@ if (translateTrigger) {
 }
 
 // Text to Speech (TTS) Logic
+let voicesLoaded = false;
+window.speechSynthesis.onvoiceschanged = () => {
+    voicesLoaded = true;
+};
+
 function toggleTTS() {
     if (window.speechSynthesis.speaking) {
         window.speechSynthesis.cancel();
@@ -324,11 +323,9 @@ function toggleTTS() {
     if (!textToRead || textToRead.trim() === "") return;
 
     const utterance = new SpeechSynthesisUtterance(textToRead);
-    
-    // Auto detect language
     utterance.lang = currentLanguage === 'de' ? 'de-DE' : 'en-US';
     
-    // Voice selection
+    // Better mobile voice selection
     const voices = window.speechSynthesis.getVoices();
     const voice = voices.find(v => v.lang.startsWith(utterance.lang.split('-')[0])) || voices[0];
     if (voice) utterance.voice = voice;
@@ -337,6 +334,13 @@ function toggleTTS() {
         utterance.rate = parseFloat(ttsSpeed.value) || 1.0;
     }
 
+    utterance.onstart = () => {
+        if (ttsTrigger) {
+            ttsTrigger.innerText = "⏹ Stopp";
+            ttsTrigger.style.backgroundColor = "var(--error, #ef4444)";
+        }
+    };
+
     utterance.onend = () => {
         if (ttsTrigger) {
             ttsTrigger.innerText = "🔊 Vorlesen";
@@ -344,11 +348,15 @@ function toggleTTS() {
         }
     };
 
-    if (ttsTrigger) {
-        ttsTrigger.innerText = "⏹ Stopp";
-        ttsTrigger.style.backgroundColor = "var(--error, #ef4444)";
-    }
-    
+    utterance.onerror = (e) => {
+        console.error("TTS Error:", e);
+        window.speechSynthesis.cancel();
+        if (ttsTrigger) {
+            ttsTrigger.innerText = "🔊 Vorlesen";
+            ttsTrigger.style.backgroundColor = "var(--accent)";
+        }
+    };
+
     window.speechSynthesis.speak(utterance);
 }
 
