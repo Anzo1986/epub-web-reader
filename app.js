@@ -21,7 +21,7 @@ function navigate(direction) {
     setTimeout(() => { navInProgress = false; }, 300);
 }
 
-console.log("App Version: v29.0 (Native Pagination)");
+console.log("App Version: v30.0 (Final Polish)");
 
 window.addEventListener('keydown', (e) => {
     if (e.key === "ArrowLeft") navigate('prev');
@@ -88,11 +88,15 @@ function openBook(bookData, filename) {
     rendition.hooks.content.register((contents) => {
         contents.addStylesheetRules({
             "body": {
+                "overflow": "hidden !important",
+                "width": "100% !important",
+                "height": "100% !important",
+                "column-fill": "auto !important",
+                "column-gap": "0px !important",
+                "column-width": "100vw !important",
                 "margin": "0 !important",
                 "padding": "60px 20px !important",
-                "background": "transparent !important",
-                "color": "#f8fafc !important",
-                "font-family": "sans-serif !important"
+                "background": "transparent !important"
             },
             "img": { "max-width": "100% !important", "height": "auto !important", "display": "block", "margin": "20px auto" },
             "p": { "margin-bottom": "1.5em !important", "line-height": "1.6 !important" }
@@ -102,16 +106,34 @@ function openBook(bookData, filename) {
         doc.addEventListener('keydown', (e) => {
             window.dispatchEvent(new KeyboardEvent('keydown', { key: e.key, code: e.code }));
         });
-        doc.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; resetUITimer(); }, {passive: true});
+
+        // V30: GESTURE DEBOUNCE - Prevents multiple page skips
+        let gestureLocked = false;
+        doc.addEventListener('touchstart', (e) => { 
+            touchStartX = e.changedTouches[0].screenX; 
+            resetUITimer(); 
+        }, {passive: true});
+
         doc.addEventListener('touchend', (e) => {
+            if (gestureLocked) return;
             const diff = e.changedTouches[0].screenX - touchStartX;
-            if (diff < -65) navigate('next'); else if (diff > 65) navigate('prev');
+            if (Math.abs(diff) > 60) {
+                gestureLocked = true;
+                if (diff < -60) navigate('next'); else if (diff > 60) navigate('prev');
+                setTimeout(() => { gestureLocked = false; }, 500); // 500ms Cooldown
+            }
         });
+
         doc.addEventListener('click', (e) => {
             const x = e.clientX, w = window.innerWidth;
             if (x > w * 0.25 && x < w * 0.75) {
                 if (document.body.classList.contains('hidden-ui')) showUI(); else hideUI();
-            } else { resetUITimer(); }
+            } else { 
+                if (gestureLocked) return;
+                gestureLocked = true;
+                if (x > w * 0.75) navigate('next'); else if (x < w * 0.25) navigate('prev');
+                setTimeout(() => { gestureLocked = false; }, 500);
+            }
         });
     });
 
