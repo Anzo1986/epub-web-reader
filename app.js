@@ -17,7 +17,9 @@ let currentUtterance = null;
 let uiTimer = null;
 let currentLanguage = 'en';
 
-console.log("App Version: v13.0 (Manual Sandbox & Path Fix)");
+let touchStartPos = { x: 0, y: 0, time: 0 };
+
+console.log("App Version: v14.0 (Gesture & Media Fix)");
 
 function hideUI() {
     document.body.classList.add('hidden-ui');
@@ -122,40 +124,46 @@ function openBook(bookData, filename) {
         width: "100%",
         height: "100%",
         flow: "paginated",
-        manager: "default"
+        manager: "default",
+        sandbox: "allow-same-origin allow-scripts allow-forms allow-popups" // Moved from hook to constructor
     });
 
-    // Manual Sandbox & Attributes Hack
-    rendition.on("rendered", (e, iframe) => {
-        // Force the sandbox attribute directly on the iframe element
-        const iframeElement = viewer.querySelector('iframe');
-        if (iframeElement) {
-            iframeElement.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-forms allow-popups');
-            iframeElement.setAttribute('allowfullscreen', 'true');
-        }
-        
-        // Bubbling events to the main controller for UI show/hide from inside the iframe
-        const iframeDoc = iframe.document;
-        if (iframeDoc) {
-            iframeDoc.addEventListener('click', () => showUI());
-            iframeDoc.addEventListener('touchstart', () => resetUITimer());
-        }
-    });
-
-    // Fix for Blob 404 images
+    // Fix for Blob 404 images and Gesture Bubbling
     rendition.hooks.content.register((contents) => {
         const doc = contents.document;
-        const images = doc.querySelectorAll('img');
-        images.forEach(img => {
-            const originalSrc = img.getAttribute('src');
-            if (originalSrc && originalSrc.includes('blob:')) {
-                // Ensure blob URLs are not resolved relatively by stripping potential prefixing
-                if (originalSrc.startsWith('http') || originalSrc.startsWith('/')) {
-                    const blobPart = originalSrc.match(/blob:https?:\/\/[^\s]+/);
-                    if (blobPart) img.src = blobPart[0];
+        const head = doc.querySelector('head');
+
+        // Inject <base> tag to help browser resolve blob URLs in srcdoc
+        if (head && !doc.querySelector('base')) {
+            const base = doc.createElement('base');
+            base.setAttribute('href', window.location.href);
+            head.appendChild(base);
+        }
+
+        // Gesture Detection: Differentiate Tap from Swipe
+        if (doc) {
+            doc.addEventListener('touchstart', (e) => {
+                const touch = e.touches[0];
+                touchStartPos = {
+                    x: touch.clientX,
+                    y: touch.clientY,
+                    time: Date.now()
+                };
+                resetUITimer();
+            });
+
+            doc.addEventListener('touchend', (e) => {
+                const touch = e.changedTouches[0];
+                const dx = Math.abs(touch.clientX - touchStartPos.x);
+                const dy = Math.abs(touch.clientY - touchStartPos.y);
+                const dt = Date.now() - touchStartPos.time;
+
+                // Threshold: If finger moved < 15px and it was < 300ms, it's a Tap
+                if (dx < 15 && dy < 15 && dt < 300) {
+                    showUI();
                 }
-            }
-        });
+            });
+        }
     });
 
     // Dark mode for the iframe content
@@ -170,7 +178,7 @@ function openBook(bookData, filename) {
     book.ready.then(() => {
         const savedLocation = localStorage.getItem(`epub-location-${filename}`);
         
-        // Wait a tiny bit for the iframe shell to settle
+        // Wait a bit for the iframe to settle
         setTimeout(() => {
             if (savedLocation) {
                 console.log('Jumping to saved location:', savedLocation);
@@ -183,9 +191,9 @@ function openBook(bookData, filename) {
             } else {
                 rendition.display();
             }
-        }, 150); // Increased delay for stability
+        }, 250); 
 
-        // Generate locations in background for progress bar
+        // Generate locations for progress bar
         book.locations.generate(1024).then(() => {
             updatePageInfo();
         });
@@ -196,8 +204,9 @@ function openBook(bookData, filename) {
         updatePageInfo();
     });
 
+    // Default touch/click handler for non-book areas
     rendition.on("click", (e) => {
-        showUI();
+        // Fallback if touch event didn't fire from inside
     });
 
     // Bind events directly to the iframe document for reliability
@@ -298,41 +307,55 @@ if (translateTrigger) {
 }
 
 // Text to Speech (TTS) Logic
-if (ttsTrigger) {
-    ttsTrigger.addEventListener('click', () => {
-        if (synth.speaking) {
-            synth.cancel();
+function toggleTTS() {
+    if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        if (ttsTrigger) {
             ttsTrigger.innerText = "🔊 Vorlesen";
             ttsTrigger.style.backgroundColor = "var(--accent)";
-            return;
         }
+        return;
+    }
 
-        const activeIframe = document.querySelector('#viewer iframe');
-        if (!activeIframe) return;
+    const activeIframe = viewer.querySelector('iframe');
+    if (!activeIframe) return;
 
-        // Grab text from the currently rendered chapter
-        const textToRead = activeIframe.contentDocument.body.innerText;
-        if (!textToRead || textToRead.trim() === "") return;
+    const textToRead = activeIframe.contentDocument.body.innerText;
+    if (!textToRead || textToRead.trim() === "") return;
 
-        currentUtterance = new SpeechSynthesisUtterance(textToRead);
-        
-        // Speed
-        if (ttsSpeed) {
-            currentUtterance.rate = parseFloat(ttsSpeed.value);
-        }
+    const utterance = new SpeechSynthesisUtterance(textToRead);
+    
+    // Auto detect language
+    utterance.lang = currentLanguage === 'de' ? 'de-DE' : 'en-US';
+    
+    // Voice selection
+    const voices = window.speechSynthesis.getVoices();
+    const voice = voices.find(v => v.lang.startsWith(utterance.lang.split('-')[0])) || voices[0];
+    if (voice) utterance.voice = voice;
+    
+    if (ttsSpeed) {
+        utterance.rate = parseFloat(ttsSpeed.value) || 1.0;
+    }
 
-        // Determine language: If Google Translate is active, use German voice. Otherwise English.
-        const isTranslated = document.documentElement.classList.contains('translated-ltr') || document.documentElement.classList.contains('translated-rtl');
-        currentUtterance.lang = isTranslated ? 'de-DE' : 'en-US';
-        
-        currentUtterance.onend = () => {
+    utterance.onend = () => {
+        if (ttsTrigger) {
             ttsTrigger.innerText = "🔊 Vorlesen";
             ttsTrigger.style.backgroundColor = "var(--accent)";
-        };
+        }
+    };
 
+    if (ttsTrigger) {
         ttsTrigger.innerText = "⏹ Stopp";
         ttsTrigger.style.backgroundColor = "var(--error, #ef4444)";
-        synth.speak(currentUtterance);
+    }
+    
+    window.speechSynthesis.speak(utterance);
+}
+
+if (ttsTrigger) {
+    ttsTrigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleTTS();
     });
 }
 
