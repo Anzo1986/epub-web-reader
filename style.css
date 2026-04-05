@@ -137,13 +137,19 @@ h1 {
     color: white !important;
 }
 
-/* Hide annoying google top bar */
+/* Hide annoying google top bar and floating widgets */
 .goog-te-banner-frame,
 iframe.goog-te-banner-frame,
 .skiptranslate > iframe,
-#goog-gt-tt {
+#goog-gt-tt,
+.goog-te-balloon-frame,
+.goog-te-gadget-icon,
+.goog-te-gadget-simple img,
+.goog-indirect-conve {
     display: none !important;
     visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
 } 
 
 body {

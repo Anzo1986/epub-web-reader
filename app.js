@@ -14,6 +14,21 @@ let touchStartX = 0;
 let touchEndX = 0;
 let synth = window.speechSynthesis;
 let currentUtterance = null;
+let uiTimer = null;
+
+function hideUI() {
+    document.body.classList.add('hidden-ui');
+}
+
+function showUI() {
+    document.body.classList.remove('hidden-ui');
+    resetUITimer();
+}
+
+function resetUITimer() {
+    if (uiTimer) clearTimeout(uiTimer);
+    uiTimer = setTimeout(hideUI, 3500); // Hide after 3.5 seconds
+}
 
 // Load stored book data if exists
 window.addEventListener('DOMContentLoaded', async () => {
@@ -110,7 +125,14 @@ function openBook(bookData, filename) {
             const w = iframe.innerWidth;
             const h = iframe.innerHeight;
             if (x > w * 0.25 && x < w * 0.75 && y > h * 0.25 && y < h * 0.75) {
-                document.body.classList.toggle('hidden-ui');
+                if (document.body.classList.contains('hidden-ui')) {
+                    showUI();
+                } else {
+                    hideUI();
+                }
+            } else {
+                // If tapping edges (navigation), reset the timer but keep UI state
+                resetUITimer();
             }
         });
 
@@ -121,14 +143,14 @@ function openBook(bookData, filename) {
 
         doc.addEventListener('touchend', (e) => {
             touchEndX = e.changedTouches[0].screenX;
-            if (touchEndX < touchStartX - 50) { rendition.next(); }
-            if (touchEndX > touchStartX + 50) { rendition.prev(); }
+            if (touchEndX < touchStartX - 50) { rendition.next(); showUI(); }
+            if (touchEndX > touchStartX + 50) { rendition.prev(); showUI(); }
         });
 
         // Arrow Keys
         doc.addEventListener('keyup', (e) => {
-            if (e.key === "ArrowLeft") { rendition.prev(); }
-            if (e.key === "ArrowRight") { rendition.next(); }
+            if (e.key === "ArrowLeft") { rendition.prev(); showUI(); }
+            if (e.key === "ArrowRight") { rendition.next(); showUI(); }
         });
     });
 }
@@ -162,7 +184,11 @@ nextBtn.addEventListener('click', () => {
 document.body.addEventListener('click', (e) => {
     // Only toggle if not clicking on the header or footer
     if (e.target === document.body || e.target === viewer) {
-        document.body.classList.toggle('hidden-ui');
+        if (document.body.classList.contains('hidden-ui')) {
+            showUI();
+        } else {
+            hideUI();
+        }
     }
 });
 
@@ -237,3 +263,5 @@ rendition && rendition.on("relocated", function() {
         }
     }
 });
+// Start with UI visible, then hide after first load
+showUI();
