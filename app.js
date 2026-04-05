@@ -21,7 +21,7 @@ function navigate(direction) {
     setTimeout(() => { navInProgress = false; }, 300);
 }
 
-console.log("App Version: v27.0 (Loop Breaker)");
+console.log("App Version: v28.0 (The Perfect View)");
 
 window.addEventListener('keydown', (e) => {
     if (e.key === "ArrowLeft") navigate('prev');
@@ -78,7 +78,6 @@ function openBook(bookData, filename) {
     
     book = ePub(bookData, { allowScriptedContent: true });
     
-    // V26: FIXED REDITION CALL (Was missing in v25)
     rendition = book.renderTo("viewer", {
         width: "100%", height: "100%",
         flow: "paginated", manager: "default",
@@ -96,9 +95,10 @@ function openBook(bookData, filename) {
                 "column-gap": "0px !important",
                 "column-width": "100vw !important",
                 "margin": "0 !important",
-                "padding": "0 !important"
+                "padding": "20px 0 !important"
             },
-            "img": { "max-width": "100% !important", "height": "auto !important", "display": "block", "margin": "10px auto" }
+            "img": { "max-width": "100% !important", "height": "auto !important", "display": "block", "margin": "20px auto" },
+            "p": { "margin-bottom": "20px !important", "line-height": "1.6 !important" }
         });
         
         const doc = contents.document;
