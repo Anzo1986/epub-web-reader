@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#1a1a2e">
+    <title>Web EPUB Reader</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="./icon-192.png">
+    
+    <link rel="stylesheet" href="./style.css">
+    
+    <!-- EPUB.js and dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
+</head>
+<body>
+    
+    <!-- UI Overlay (Auto-hides when tapping middle of screen) -->
+    <header id="header" class="glass-panel slide-down">
+        <div class="header-content">
+            <h1>EPUB Reader</h1>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <!-- TTS Controls -->
+                <select id="tts-speed" class="upload-btn" style="background-color: transparent; border: 1px solid var(--accent); padding: 5px;">
+                    <option value="0.8">0.8x</option>
+                    <option value="1.0" selected>1.0x</option>
+                    <option value="1.2">1.2x</option>
+                    <option value="1.5">1.5x</option>
+                    <option value="2.0">2.0x</option>
+                </select>
+                <button id="tts-trigger" class="upload-btn" style="background-color: var(--accent);">🔊 Vorlesen</button>
+
+                <!-- Custom Button that will trigger the Google Translate dropdown -->
+                <button id="translate-trigger" class="upload-btn" style="background-color: var(--success); border-color: var(--success);">🌍 Übersetzen</button>
+                <div id="google_translate_element" style="display:none;"></div>
+                
+                <label for="book-upload" class="upload-btn">📚 Laden</label>
+                <input type="file" id="book-upload" accept=".epub" style="display: none;">
+            </div>
+        </div>
+    </header>
+
+    <!-- Reading Area -->
+    <div id="viewer" class="viewer"></div>
+
+    <!-- Pagination Controls Overlay -->
+    <div id="controls" class="controls glass-panel slide-up">
+        <button id="prev-btn" class="nav-btn">Zurück</button>
+        <span id="page-info">Seite --</span>
+        <button id="next-btn" class="nav-btn">Weiter</button>
+    </div>
+
+    <!-- Hidden Translation Trigger (For PWA) -->
+    <script type="text/javascript">
+        function googleTranslateElementInit() {
+            new google.translate.TranslateElement({
+                pageLanguage: 'en',
+                includedLanguages: 'de',
+                layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+                autoDisplay: false
+            }, 'google_translate_element');
+        }
+    </script>
+    <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+    
+    <script src="./app.js"></script>
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').then(registration => {
+                    console.log('SW registered: ', registration);
+                }).catch(registrationError => {
+                    console.log('SW registration failed: ', registrationError);
+                });
+            });
+        }
+    </script>
+</body>
+</html>
