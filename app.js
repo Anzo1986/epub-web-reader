@@ -16,6 +16,8 @@ let synth = window.speechSynthesis;
 let currentUtterance = null;
 let uiTimer = null;
 
+console.log("App Version: v7.0 (Force Refresh Active)");
+
 function hideUI() {
     document.body.classList.add('hidden-ui');
 }
