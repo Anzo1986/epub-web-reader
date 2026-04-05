@@ -17,7 +17,7 @@ let currentUtterance = null;
 let uiTimer = null;
 let currentLanguage = 'en';
 
-console.log("App Version: v17.1 (Hotfix)");
+console.log("App Version: v17.2 (Final Hotfix)");
 
 function hideUI() {
     document.body.classList.add('hidden-ui');
@@ -114,6 +114,8 @@ function openBook(bookData, filename) {
     }
     viewer.innerHTML = '';
 
+    book = ePub(bookData);
+    
     // Render
     rendition = book.renderTo("viewer", {
         width: "100%",
