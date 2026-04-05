@@ -144,7 +144,11 @@ iframe.goog-te-banner-frame,
 #goog-gt-tt,
 .goog-te-balloon-frame,
 .goog-te-gadget-icon,
+.goog-te-gadget-simple,
 .goog-te-gadget-simple img,
+.goog-te-combo,
+.goog-logo-link,
+.goog-te-gadget span,
 .goog-indirect-conve {
     display: none !important;
     visibility: hidden !important;

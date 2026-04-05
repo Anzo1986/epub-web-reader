@@ -15,8 +15,9 @@ let touchEndX = 0;
 let synth = window.speechSynthesis;
 let currentUtterance = null;
 let uiTimer = null;
+let currentLanguage = 'en';
 
-console.log("App Version: v7.0 (Force Refresh Active)");
+console.log("App Version: v8.0 (Refined Toggle & Position)");
 
 function hideUI() {
     document.body.classList.add('hidden-ui');
@@ -29,7 +30,31 @@ function showUI() {
 
 function resetUITimer() {
     if (uiTimer) clearTimeout(uiTimer);
-    uiTimer = setTimeout(hideUI, 3500); // Hide after 3.5 seconds
+    uiTimer = setTimeout(hideUI, 3500); 
+}
+
+function toggleLanguage() {
+    const combo = document.querySelector('.goog-te-combo');
+    if (!combo) {
+        console.warn('Google Translate combo not found yet. Initializing...');
+        // If not found, it might mean the widget is still loading.
+        // We try to trigger the hidden element once to make sure it exists.
+        return;
+    }
+
+    if (currentLanguage === 'en') {
+        combo.value = 'de';
+        currentLanguage = 'de';
+        if (translateTrigger) translateTrigger.innerText = "🇺🇸 Original";
+    } else {
+        combo.value = ''; // Original
+        currentLanguage = 'en';
+        if (translateTrigger) translateTrigger.innerText = "🌍 Auf Deutsch";
+    }
+
+    // Trigger the change event so Google recognizes the selection
+    combo.dispatchEvent(new Event('change'));
+    resetUITimer();
 }
 
 // Load stored book data if exists
@@ -95,19 +120,18 @@ function openBook(bookData, filename) {
     });
     rendition.themes.select("dark");
 
-    // Check if we have a saved location for this book
-    const savedLocation = localStorage.getItem(`epub-location-${filename}`);
-    
-    if (savedLocation) {
-        rendition.display(savedLocation);
-    } else {
-        rendition.display();
-    }
-
-    // Navigation Events
+    // Precise position handling
     book.ready.then(() => {
-        return book.locations.generate(1600); // Generate locations for accurate progress
+        // Generate locations for accurate progress tracking
+        return book.locations.generate(1600); 
     }).then(() => {
+        const savedLocation = localStorage.getItem(`epub-location-${filename}`);
+        if (savedLocation) {
+            console.log('Jumping to saved location:', savedLocation);
+            rendition.display(savedLocation);
+        } else {
+            rendition.display();
+        }
         updatePageInfo();
     });
 
@@ -207,12 +231,9 @@ document.body.addEventListener("touchend", event => {
 
 // Show Translate Element when Custom Button is clicked
 if (translateTrigger) {
-    translateTrigger.addEventListener('click', () => {
-        const gt = document.getElementById('google_translate_element');
-        if(gt) {
-            gt.style.display = 'block';
-            translateTrigger.style.display = 'none'; // hide the custom button once active
-        }
+    translateTrigger.addEventListener('click', (e) => {
+        e.stopPropagation(); // prevent UI hiding
+        toggleLanguage();
     });
 }
 
