@@ -37,13 +37,13 @@
         body { top: 0 !important; }
         .skiptranslate { display: none !important; }
 
-        /* Viewer takes FULL screen */
+        /* V34: Restricted Viewport for Perfect Pagination */
         .viewer-container {
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            top: 75px;    /* Leave room for Header */
+            bottom: 75px; /* Leave room for Footer/Controls */
+            left: 10px;
+            right: 10px;
             z-index: 1;
         }
 
@@ -73,8 +73,8 @@
 </head>
 <body>
     <script>
-        // V33: Safety Reset (REVERT TO WORKING v29 LAYOUT)
-        const VERSION = 'v33.0';
+        // V34: Safe-Area Viewer for Stable Navigation
+        const VERSION = 'v34.0';
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(registrations => {
                 for (let r of registrations) {
@@ -106,7 +106,7 @@
                     <option value="2.0">2.0x</option>
                 </select>
                 <div class="header-controls">
-                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v33.0</span>
+                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v34.0</span>
                     <button id="tts-trigger" class="upload-btn" style="background-color: var(--accent);">🔊 Vorlesen</button>
                 </div>
 

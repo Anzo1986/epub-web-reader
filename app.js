@@ -21,7 +21,7 @@ function navigate(direction) {
     setTimeout(() => { navInProgress = false; }, 300);
 }
 
-console.log("App Version: v33.0 (Safety Reset)");
+console.log("App Version: v34.0 (Safe-Area Viewer)");
 
 window.addEventListener('keydown', (e) => {
     if (e.key === "ArrowLeft") navigate('prev');
@@ -90,7 +90,7 @@ function openBook(bookData, filename) {
         contents.addStylesheetRules({
             "body": {
                 "margin": "0 !important",
-                "padding": "60px 20px !important",
+                "padding": "0 20px !important",
                 "background": "transparent !important",
                 "color": "#f8fafc !important",
                 "font-family": "sans-serif !important"
@@ -133,7 +133,7 @@ function openBook(bookData, filename) {
         });
     });
     
-    // V33: Force resize to recalculate columns
+    // V34: Force resize to recalculate columns in the new safe area
     rendition.on("started", () => {
         setTimeout(() => rendition.resize(), 500);
     });
