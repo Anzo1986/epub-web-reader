@@ -80,26 +80,21 @@ function openBook(bookData, filename) {
     
     book = ePub(bookData, { allowScriptedContent: true });
     
-    // V24: BREAKTHROUGH - Force sandbox and scripts to enable pagination
-    rendition = book.renderTo("viewer", {
-        width: "100%", height: "100%",
-        flow: "paginated", manager: "default",
-        allowScriptedContent: true,
-        sandbox: "allow-same-origin allow-scripts allow-popups allow-forms"
-    });
-
-    // Fail-safe CSS injection: Force column layout even if epub.js fails internally
+    // V25: Refined Layout - Use 100% instead of 100vh to avoid mobile viewport issues
     rendition.hooks.content.register((contents) => {
         contents.addStylesheetRules({
             "body": {
                 "overflow": "hidden !important",
-                "width": "100vw !important",
-                "height": "100vh !important",
+                "width": "100% !important",
+                "height": "100% !important",
                 "column-fill": "auto !important",
                 "column-gap": "0px !important",
-                "column-width": "100vw !important"
+                "column-width": "100vw !important",
+                "margin": "0 !important",
+                "padding": "0 !important"
             },
-            "img": { "max-width": "100% !important", "height": "auto !important" }
+            "img": { "max-width": "100% !important", "height": "auto !important", "display": "block", "margin": "0 auto" },
+            "p": { "margin": "1em 0 !important" }
         });
         
         const doc = contents.document;

@@ -19,8 +19,8 @@
 </head>
 <body>
     <script>
-        // V24 PURGE: Force delete all caches and service workers for a clean start
-        const VERSION = 'v24.0';
+        // V25 PURGE: Force delete all caches and service workers for a clean start
+        const VERSION = 'v25.0';
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(registrations => {
                 for (let r of registrations) {
@@ -53,7 +53,7 @@
                     <option value="2.0">2.0x</option>
                 </select>
                 <div class="header-controls">
-                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v24.0</span>
+                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v25.0</span>
                     <button id="tts-trigger" class="upload-btn" style="background-color: var(--accent);">🔊 Vorlesen</button>
                 </div>
 
