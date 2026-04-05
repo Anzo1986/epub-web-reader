@@ -17,7 +17,7 @@ let currentUtterance = null;
 let uiTimer = null;
 let currentLanguage = 'en';
 
-console.log("App Version: v15.0 (Stability & Simplified UI)");
+console.log("App Version: v16.0 (Core Stability)");
 
 function hideUI() {
     document.body.classList.add('hidden-ui');
@@ -122,43 +122,36 @@ function openBook(bookData, filename) {
         width: "100%",
         height: "100%",
         flow: "paginated",
-        manager: "default"
+        manager: "default",
+        sandbox: "allow-same-origin allow-scripts" // Moved back to primary constructor
     });
 
-    // Stability Fix: Direct sandbox handling via iframe discovery
+    // Final Stability: Explicitly handle sandbox error and UI toggle
     rendition.on("rendered", (e, iframe) => {
-        const iframeElement = viewer.querySelector('iframe');
-        if (iframeElement) {
-            // Re-apply sandbox if missing, but keep it minimal to avoid chapter jumps
-            iframeElement.setAttribute('sandbox', 'allow-same-origin allow-scripts');
-        }
-        
-        // Simple UI toggle: if any content is touched/clicked, reset timer
+        // Reset timer on any touch inside the iframe
         const iframeDoc = iframe.document;
         if (iframeDoc) {
             iframeDoc.addEventListener('touchstart', () => resetUITimer());
         }
     });
 
-    // Robust Image Fix: Repair broken blob paths without using <base>
+    // Final Image Repair Hook: Fix absolute-prefixed blob URLs
     rendition.hooks.content.register((contents) => {
         const doc = contents.document;
         const fixImages = () => {
             const images = doc.querySelectorAll('img');
             images.forEach(img => {
                 const src = img.getAttribute('src');
-                if (src && src.includes('blob:https')) {
-                    // Strip the origin prefix if the browser added it incorrectly
-                    const actualBlob = src.match(/blob:https:[^\s"']+/);
-                    if (actualBlob && src !== actualBlob[0]) {
-                        img.src = actualBlob[0];
-                    }
+                // Regex matches blob URLs even if they are prefixed by the origin
+                const blobMatch = src ? src.match(/blob:https?:\/\/[^\s"']+/) : null;
+                if (blobMatch && src !== blobMatch[0]) {
+                    img.src = blobMatch[0];
                 }
             });
         };
         fixImages();
-        // Fallback for dynamic loads
-        setTimeout(fixImages, 100);
+        // Fallback for delay-loaded content
+        setTimeout(fixImages, 200);
     });
 
     // Dark mode for the iframe content
@@ -173,7 +166,7 @@ function openBook(bookData, filename) {
     book.ready.then(() => {
         const savedLocation = localStorage.getItem(`epub-location-${filename}`);
         
-        // 200ms delay for iframe shell stability
+        // Final delay for iframe shell stability
         setTimeout(() => {
             if (savedLocation) {
                 console.log('Jumping to saved location:', savedLocation);
@@ -186,7 +179,7 @@ function openBook(bookData, filename) {
             } else {
                 rendition.display();
             }
-        }, 200); 
+        }, 150); 
 
         book.locations.generate(1024).then(() => {
             updatePageInfo();
@@ -198,7 +191,6 @@ function openBook(bookData, filename) {
         updatePageInfo();
     });
 
-    // Only show UI on a clear click (epub.js handles tap-to-click on mobile)
     rendition.on("click", (e) => {
         showUI();
     });
@@ -244,12 +236,8 @@ function openBook(bookData, filename) {
     });
 }
 
-// Global Keyboard navigation (main window)
-document.addEventListener("keyup", function(e) {
-    if(!rendition) return;
-    if (e.key === "ArrowLeft") { rendition.prev(); }
-    if (e.key === "ArrowRight") { rendition.next(); }
-});
+// Stability: epub.js handles keyboard events internally inside the iframe.
+// We remove parent-level listeners to avoid duplicate page-skipping.
 
 function updatePageInfo() {
     if(!book || !rendition) return;
@@ -300,15 +288,12 @@ if (translateTrigger) {
     });
 }
 
-// Text to Speech (TTS) Logic
-let voicesLoaded = false;
-window.speechSynthesis.onvoiceschanged = () => {
-    voicesLoaded = true;
-};
-
 function toggleTTS() {
-    if (window.speechSynthesis.speaking) {
-        window.speechSynthesis.cancel();
+    // Stop any existing speech before starting new one to avoid "interrupted" errors
+    window.speechSynthesis.cancel();
+
+    if (synthStatus.isSpeaking) {
+        synthStatus.isSpeaking = false;
         if (ttsTrigger) {
             ttsTrigger.innerText = "🔊 Vorlesen";
             ttsTrigger.style.backgroundColor = "var(--accent)";
@@ -323,9 +308,13 @@ function toggleTTS() {
     if (!textToRead || textToRead.trim() === "") return;
 
     const utterance = new SpeechSynthesisUtterance(textToRead);
-    utterance.lang = currentLanguage === 'de' ? 'de-DE' : 'en-US';
     
-    // Better mobile voice selection
+    // Auto detect language based on current translation state
+    const isTranslated = document.documentElement.classList.contains('translated-ltr') || 
+                       document.getElementById('translate-toggle').innerText.includes('Original');
+    utterance.lang = isTranslated ? 'de-DE' : 'en-US';
+    
+    // Better mobile voice discovery
     const voices = window.speechSynthesis.getVoices();
     const voice = voices.find(v => v.lang.startsWith(utterance.lang.split('-')[0])) || voices[0];
     if (voice) utterance.voice = voice;
@@ -335,6 +324,7 @@ function toggleTTS() {
     }
 
     utterance.onstart = () => {
+        synthStatus.isSpeaking = true;
         if (ttsTrigger) {
             ttsTrigger.innerText = "⏹ Stopp";
             ttsTrigger.style.backgroundColor = "var(--error, #ef4444)";
@@ -342,6 +332,7 @@ function toggleTTS() {
     };
 
     utterance.onend = () => {
+        synthStatus.isSpeaking = false;
         if (ttsTrigger) {
             ttsTrigger.innerText = "🔊 Vorlesen";
             ttsTrigger.style.backgroundColor = "var(--accent)";
@@ -350,7 +341,7 @@ function toggleTTS() {
 
     utterance.onerror = (e) => {
         console.error("TTS Error:", e);
-        window.speechSynthesis.cancel();
+        synthStatus.isSpeaking = false;
         if (ttsTrigger) {
             ttsTrigger.innerText = "🔊 Vorlesen";
             ttsTrigger.style.backgroundColor = "var(--accent)";
@@ -359,6 +350,9 @@ function toggleTTS() {
 
     window.speechSynthesis.speak(utterance);
 }
+
+// Track speaking state explicitly
+let synthStatus = { isSpeaking: false };
 
 if (ttsTrigger) {
     ttsTrigger.addEventListener('click', (e) => {
