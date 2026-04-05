@@ -21,7 +21,7 @@ function navigate(direction) {
     setTimeout(() => { navInProgress = false; }, 300);
 }
 
-console.log("App Version: v32.0 (Ultimate Navigation)");
+console.log("App Version: v33.0 (Safety Reset)");
 
 window.addEventListener('keydown', (e) => {
     if (e.key === "ArrowLeft") navigate('prev');
@@ -81,23 +81,19 @@ function openBook(bookData, filename) {
     rendition = book.renderTo("viewer", {
         width: "100%", height: "100%",
         flow: "paginated", manager: "default",
-        spread: "none", // V32: Force single page view
+        spread: "none",
         allowScriptedContent: true,
         sandbox: "allow-same-origin allow-scripts allow-popups allow-forms"
     });
 
     rendition.hooks.content.register((contents) => {
-        // V32: The "Magic" internal CSS that enables paging without breaking layout
         contents.addStylesheetRules({
-            "html": { "height": "100% !important", "overflow": "hidden !important" },
             "body": {
-                "height": "100% !important",
                 "margin": "0 !important",
                 "padding": "60px 20px !important",
-                "column-width": "100vw !important",
-                "column-gap": "0px !important",
-                "column-fill": "auto !important",
-                "background": "transparent !important"
+                "background": "transparent !important",
+                "color": "#f8fafc !important",
+                "font-family": "sans-serif !important"
             },
             "img": { "max-width": "100% !important", "height": "auto !important", "display": "block", "margin": "20px auto" },
             "p": { "margin-bottom": "1.5em !important", "line-height": "1.6 !important" }
@@ -137,7 +133,7 @@ function openBook(bookData, filename) {
         });
     });
     
-    // V32: Force resize to recalculate columns
+    // V33: Force resize to recalculate columns
     rendition.on("started", () => {
         setTimeout(() => rendition.resize(), 500);
     });
