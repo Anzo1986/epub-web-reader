@@ -17,7 +17,7 @@ let currentUtterance = null;
 let uiTimer = null;
 let currentLanguage = 'en';
 
-console.log("App Version: v12.0 (Deep Sandbox Fix)");
+console.log("App Version: v13.0 (Manual Sandbox & Path Fix)");
 
 function hideUI() {
     document.body.classList.add('hidden-ui');
@@ -122,8 +122,40 @@ function openBook(bookData, filename) {
         width: "100%",
         height: "100%",
         flow: "paginated",
-        manager: "default",
-        sandbox: "allow-same-origin allow-scripts" // Explicit sandbox rule
+        manager: "default"
+    });
+
+    // Manual Sandbox & Attributes Hack
+    rendition.on("rendered", (e, iframe) => {
+        // Force the sandbox attribute directly on the iframe element
+        const iframeElement = viewer.querySelector('iframe');
+        if (iframeElement) {
+            iframeElement.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-forms allow-popups');
+            iframeElement.setAttribute('allowfullscreen', 'true');
+        }
+        
+        // Bubbling events to the main controller for UI show/hide from inside the iframe
+        const iframeDoc = iframe.document;
+        if (iframeDoc) {
+            iframeDoc.addEventListener('click', () => showUI());
+            iframeDoc.addEventListener('touchstart', () => resetUITimer());
+        }
+    });
+
+    // Fix for Blob 404 images
+    rendition.hooks.content.register((contents) => {
+        const doc = contents.document;
+        const images = doc.querySelectorAll('img');
+        images.forEach(img => {
+            const originalSrc = img.getAttribute('src');
+            if (originalSrc && originalSrc.includes('blob:')) {
+                // Ensure blob URLs are not resolved relatively by stripping potential prefixing
+                if (originalSrc.startsWith('http') || originalSrc.startsWith('/')) {
+                    const blobPart = originalSrc.match(/blob:https?:\/\/[^\s]+/);
+                    if (blobPart) img.src = blobPart[0];
+                }
+            }
+        });
     });
 
     // Dark mode for the iframe content
@@ -151,7 +183,7 @@ function openBook(bookData, filename) {
             } else {
                 rendition.display();
             }
-        }, 100);
+        }, 150); // Increased delay for stability
 
         // Generate locations in background for progress bar
         book.locations.generate(1024).then(() => {
@@ -164,9 +196,8 @@ function openBook(bookData, filename) {
         updatePageInfo();
     });
 
-    // Bubbling events to the main controller for UI show/hide
     rendition.on("click", (e) => {
-        showUI(); // if anything is clicked, always show UI
+        showUI();
     });
 
     // Bind events directly to the iframe document for reliability
