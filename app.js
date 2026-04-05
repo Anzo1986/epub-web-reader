@@ -17,7 +17,7 @@ let currentUtterance = null;
 let uiTimer = null;
 let currentLanguage = 'en';
 
-console.log("App Version: v11.0 (Stability & Sandbox Fix)");
+console.log("App Version: v12.0 (Deep Sandbox Fix)");
 
 function hideUI() {
     document.body.classList.add('hidden-ui');
@@ -117,12 +117,13 @@ function openBook(bookData, filename) {
     book = ePub(bookData);
     
     // Render
+    // Render
     rendition = book.renderTo("viewer", {
         width: "100%",
         height: "100%",
         flow: "paginated",
         manager: "default",
-        allowScripts: true // Fixes "about:srcdoc" sandbox issues
+        sandbox: "allow-same-origin allow-scripts" // Explicit sandbox rule
     });
 
     // Dark mode for the iframe content
@@ -136,19 +137,22 @@ function openBook(bookData, filename) {
     // Precise position handling
     book.ready.then(() => {
         const savedLocation = localStorage.getItem(`epub-location-${filename}`);
-        if (savedLocation) {
-            console.log('Jumping to saved location:', savedLocation);
-            // Use try/catch to prevent crashes on invalid CFI
-            try {
-                rendition.display(savedLocation);
-            } catch (e) {
-                console.error("Failed to jump to CFI:", e);
+        
+        // Wait a tiny bit for the iframe shell to settle
+        setTimeout(() => {
+            if (savedLocation) {
+                console.log('Jumping to saved location:', savedLocation);
+                try {
+                    rendition.display(savedLocation);
+                } catch (e) {
+                    console.error("Failed to jump to CFI:", e);
+                    rendition.display();
+                }
+            } else {
                 rendition.display();
             }
-        } else {
-            rendition.display();
-        }
-        
+        }, 100);
+
         // Generate locations in background for progress bar
         book.locations.generate(1024).then(() => {
             updatePageInfo();
@@ -158,6 +162,11 @@ function openBook(bookData, filename) {
     rendition.on("relocated", function(location) {
         localStorage.setItem(`epub-location-${filename}`, location.start.cfi);
         updatePageInfo();
+    });
+
+    // Bubbling events to the main controller for UI show/hide
+    rendition.on("click", (e) => {
+        showUI(); // if anything is clicked, always show UI
     });
 
     // Bind events directly to the iframe document for reliability
