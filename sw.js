@@ -1,19 +1,19 @@
-const CACHE_NAME = 'epub-reader-v20.0';
+const CACHE_NAME = 'epub-reader-v21.0';
 const urlsToCache = [
   './',
   './index.html',
-  './style.css',
   './app.js',
   './manifest.json',
+  'https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js',
+  'https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js',
+  'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js'
 ];
 
 self.addEventListener('install', event => {
-  self.skipWaiting(); 
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => {
-        return cache.addAll(urlsToCache);
-      })
+      .then(cache => cache.addAll(urlsToCache))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -21,25 +21,34 @@ self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
+        cacheNames.filter(name => name !== CACHE_NAME)
+          .map(name => caches.delete(name))
       );
     }).then(() => self.clients.claim())
   );
 });
 
+// V21: URL Repair Engine inside the Service Worker
 self.addEventListener('fetch', event => {
-  // Only intercept local requests from the same origin
-  if (event.request.url.startsWith(self.location.origin)) {
-    event.respondWith(
-      caches.match(event.request)
-        .then(response => {
-          return response || fetch(event.request);
-        }
-      )
-    );
+  const url = event.request.url;
+
+  // Detect and fix the corrupted blob paths (e.g. /OEBPS/blob:https://...)
+  if (url.includes('/blob:http')) {
+    const cleanBlobUrl = url.split('blob:')[1];
+    if (cleanBlobUrl) {
+      console.log('[SW] Repaired corrupted blob URL:', cleanBlobUrl);
+      event.respondWith(
+        fetch('blob:' + cleanBlobUrl).catch(() => {
+            // Fallback: if browser blocks fetch(blob:), let it pass as original or redirect
+            return Response.redirect('blob:' + cleanBlobUrl, 302);
+        })
+      );
+      return;
+    }
   }
+
+  event.respondWith(
+    caches.match(event.request)
+      .then(response => response || fetch(event.request))
+  );
 });

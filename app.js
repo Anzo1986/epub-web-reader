@@ -1,3 +1,14 @@
+// V21: Global Element Hook - Catch the iframe before it's even added to the DOM
+const originalCreateElement = document.createElement;
+document.createElement = function(tagName, options) {
+    const el = originalCreateElement.call(document, tagName, options);
+    if (tagName.toLowerCase() === 'iframe') {
+        el.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-popups allow-forms');
+        console.log('[System] Intercepted iframe creation - forcing sandbox');
+    }
+    return el;
+};
+
 let book = null;
 let rendition = null;
 
@@ -16,14 +27,13 @@ let synth = window.speechSynthesis;
 let uiTimer = null;
 let currentLanguage = 'en';
 
-// V20 Navigation State Machine: Prevents accidental multiple page flips
+// V21 Navigation Lock: Double-guaranteed
 let navInProgress = false;
 let navCooldown = false;
 
 function navigate(direction) {
     if (!rendition || navInProgress || navCooldown) return;
     
-    // Set two-stage lock
     navInProgress = true; 
     navCooldown = true;
     
@@ -32,16 +42,13 @@ function navigate(direction) {
     
     showUI();
     
-    // Cooldown stage 1: Time-based (400ms)
-    setTimeout(() => { navCooldown = false; }, 400); 
-    
-    // Cooldown stage 2: Logic-based (unlock only when relocated fires)
-    // Handled in rendition.on("relocated")
+    // Safety timer: unlock even if relocated fails
+    setTimeout(() => { navCooldown = false; }, 500); 
 }
 
-console.log("App Version: v20.0 (Bulletproof)");
+console.log("App Version: v21.0 (Deep System Interception)");
 
-// Global Key Listeners: Works even if iframe has focus or not
+// Global Key Listeners
 window.addEventListener('keydown', (e) => {
     if (e.key === "ArrowLeft") navigate('prev');
     if (e.key === "ArrowRight") navigate('next');
@@ -91,20 +98,6 @@ async function toggleLanguage() {
     resetUITimer();
 }
 
-// Sandbox Watchdog: Force permissions as soon as the iframe is injected
-const observer = new MutationObserver((mutations) => {
-    for (const mutation of mutations) {
-        for (const node of mutation.addedNodes) {
-            if (node.tagName === 'IFRAME') {
-                node.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-popups');
-            } else if (node.querySelectorAll) {
-                node.querySelectorAll('iframe').forEach(f => f.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-popups'));
-            }
-        }
-    }
-});
-observer.observe(viewer, { childList: true, subtree: true });
-
 // Book Loading Logic
 window.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -148,24 +141,17 @@ function openBook(bookData, filename) {
         manager: "default"
     });
 
-    // V20 Navigation & Protection Hook
     rendition.on("rendered", (section, view) => {
         const win = view.iframe ? view.iframe.contentWindow : window;
         const doc = view.document || (view.iframe && view.iframe.contentDocument);
         if (!doc) return; 
 
-        // Pass Keyboard events to parent window so global listeners catch them
+        // Keyboard Event Propagation
         doc.addEventListener('keydown', (e) => {
-            const evt = new KeyboardEvent('keydown', {
-                key: e.key,
-                code: e.code,
-                keyCode: e.keyCode,
-                which: e.which,
-                shiftKey: e.shiftKey,
-                ctrlKey: e.ctrlKey,
-                metaKey: e.metaKey
-            });
-            window.dispatchEvent(evt);
+            window.dispatchEvent(new KeyboardEvent('keydown', {
+                key: e.key, code: e.code, keyCode: e.keyCode, which: e.which,
+                shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, metaKey: e.metaKey
+            }));
         });
 
         doc.addEventListener('touchstart', (e) => {
@@ -187,35 +173,29 @@ function openBook(bookData, filename) {
             const h = win.innerHeight;
             if (x > w * 0.25 && x < w * 0.75 && y > h * 0.25 && y < h * 0.75) {
                 if (document.body.classList.contains('hidden-ui')) showUI(); else hideUI();
-            } else { 
-                resetUITimer(); 
-            }
+            } else { resetUITimer(); }
         });
     });
 
-    // Image Repair v6: Aggressive attribute cleaning + delayed retry
+    // Image Repair v7: Aggressive cleaning + SW protection
     rendition.hooks.content.register((contents) => {
         const doc = contents.document;
         if (!doc) return;
-        
         const repair = () => {
             doc.querySelectorAll('img').forEach(img => {
                 const src = img.getAttribute('src');
                 if (src && src.includes('blob:')) {
-                    const blobOnly = src.split('blob:')[1];
-                    if (blobOnly) {
-                        const finalUrl = 'blob:' + blobOnly.split(' ')[0].replace(/['"]/g, '');
-                        if (img.src !== finalUrl) {
-                            img.removeAttribute('src'); 
-                            img.src = finalUrl;
-                        }
+                    const blobMatch = src.match(/blob:https?:\/\/[^\s"']+/);
+                    if (blobMatch && src !== blobMatch[0]) {
+                        img.removeAttribute('src'); 
+                        img.src = blobMatch[0];
                     }
                 }
             });
         };
         repair();
         setTimeout(repair, 100);
-        setTimeout(repair, 400);
+        setTimeout(repair, 500);
     });
 
     rendition.themes.register("dark", {
@@ -234,7 +214,6 @@ function openBook(bookData, filename) {
         localStorage.setItem(`epub-location-${filename}`, location.start.cfi);
         updatePageInfo();
         if (synth && synth.speaking) synth.cancel(); 
-        // Unlock navigation once relocated is finished
         navInProgress = false; 
     });
 
@@ -263,41 +242,18 @@ document.body.addEventListener('click', (e) => {
 
 function toggleTTS() {
     window.speechSynthesis.cancel();
-    if (synthStatus.isSpeaking) {
-        synthStatus.isSpeaking = false;
-        ttsTrigger.innerText = "🔊 Vorlesen";
-        ttsTrigger.style.backgroundColor = "var(--accent)";
-        return;
-    }
-
     const activeIframe = viewer.querySelector('iframe');
     const textToRead = activeIframe?.contentDocument?.body?.innerText;
     if (!textToRead) return;
-
     const utterance = new SpeechSynthesisUtterance(textToRead);
     const isTranslated = !!(translateTrigger && translateTrigger.innerText.includes('Original'));
     utterance.lang = isTranslated ? 'de-DE' : 'en-US';
-    
     const voices = window.speechSynthesis.getVoices();
     const voice = voices.find(v => v.lang.startsWith(utterance.lang.split('-')[0])) || voices[0];
     if (voice) utterance.voice = voice;
     if (ttsSpeed) utterance.rate = parseFloat(ttsSpeed.value) || 1.0;
-
-    utterance.onstart = () => {
-        synthStatus.isSpeaking = true;
-        ttsTrigger.innerText = "⏹ Stopp";
-        ttsTrigger.style.backgroundColor = "#ef4444";
-    };
-    utterance.onend = () => {
-        synthStatus.isSpeaking = false;
-        ttsTrigger.innerText = "🔊 Vorlesen";
-        ttsTrigger.style.backgroundColor = "var(--accent)";
-    };
-    utterance.onerror = () => {
-        synthStatus.isSpeaking = false;
-        ttsTrigger.innerText = "🔊 Vorlesen";
-        ttsTrigger.style.backgroundColor = "var(--accent)";
-    };
+    utterance.onstart = () => { synthStatus.isSpeaking = true; ttsTrigger.innerText = "⏹ Stopp"; ttsTrigger.style.backgroundColor = "#ef4444"; };
+    utterance.onend = () => { synthStatus.isSpeaking = false; ttsTrigger.innerText = "🔊 Vorlesen"; ttsTrigger.style.backgroundColor = "var(--accent)"; };
     window.speechSynthesis.speak(utterance);
 }
 
