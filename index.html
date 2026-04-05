@@ -19,15 +19,21 @@
 </head>
 <body>
     <script>
-        // V23 HARD RESET: Force purge old service workers if version mismatch
-        const EXPECTED_VERSION = 'v23.0';
+        // V24 PURGE: Force delete all caches and service workers for a clean start
+        const VERSION = 'v24.0';
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(registrations => {
-                for (let registration of registrations) {
-                    if (registration.active && !registration.active.scriptURL.includes(EXPECTED_VERSION)) {
-                        console.log('Hard Reset: Purging old SW...', registration.active.scriptURL);
-                        registration.unregister().then(() => window.location.reload(true));
+                for (let r of registrations) {
+                    if (!r.active || !r.active.scriptURL.includes(VERSION)) {
+                        console.log('Purging old Service Worker...', r.active ? r.active.scriptURL : 'unknown');
+                        r.unregister();
                     }
+                }
+            });
+            // Delete all caches to ensure no v20.0 files remain
+            caches.keys().then(names => {
+                for (let name of names) {
+                    if (name !== 'epub-reader-' + VERSION) caches.delete(name);
                 }
             });
         }
@@ -47,7 +53,7 @@
                     <option value="2.0">2.0x</option>
                 </select>
                 <div class="header-controls">
-                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v23.0</span>
+                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v24.0</span>
                     <button id="tts-trigger" class="upload-btn" style="background-color: var(--accent);">🔊 Vorlesen</button>
                 </div>
 

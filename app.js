@@ -10,28 +10,21 @@ const translateTrigger = document.getElementById('translate-trigger');
 const ttsTrigger = document.getElementById('tts-trigger');
 const ttsSpeed = document.getElementById('tts-speed');
 
-let touchStartX = 0;
-let touchEndX = 0;
-let synth = window.speechSynthesis;
-let uiTimer = null;
-let currentLanguage = 'en';
+let touchStartX = 0, touchEndX = 0, synth = window.speechSynthesis, uiTimer = null, currentLanguage = 'en';
 
-// V23: Robust Navigation State
-let navBlocked = false;
+// V24 Navigation Engine: State-Locked + Debounced
+let navInProgress = false;
 function navigate(direction) {
-    if (!rendition || navBlocked) return;
-    navBlocked = true;
-    
-    if (direction === 'next') rendition.next();
-    else rendition.prev();
-    
+    if (!rendition || navInProgress) return;
+    navInProgress = true;
+    if (direction === 'next') rendition.next(); else rendition.prev();
     showUI();
-    setTimeout(() => { navBlocked = false; }, 350); 
+    // Hardware-Debounce: Ensures 300ms minimum between flips
+    setTimeout(() => { navInProgress = false; }, 300);
 }
 
-console.log("App Version: v23.0 (Engine Fix)");
+console.log("App Version: v24.0 (Breakthrough)");
 
-// Global listeners
 window.addEventListener('keydown', (e) => {
     if (e.key === "ArrowLeft") navigate('prev');
     if (e.key === "ArrowRight") navigate('next');
@@ -42,42 +35,27 @@ function showUI() { document.body.classList.remove('hidden-ui'); resetUITimer();
 function resetUITimer() { if (uiTimer) clearTimeout(uiTimer); uiTimer = setTimeout(hideUI, 3500); }
 
 async function toggleLanguage() {
-    const btn = document.getElementById('translate-trigger');
+    const btn = translateTrigger;
     const getCombo = () => document.querySelector('.goog-te-combo');
     let combo = getCombo();
     if (!combo) {
         if (btn) btn.innerText = "⏳ Lädt...";
-        for (let i = 0; i < 10; i++) {
-            await new Promise(r => setTimeout(r, 500));
-            combo = getCombo();
-            if (combo) break;
-        }
+        for (let i = 0; i < 10; i++) { await new Promise(r => setTimeout(r, 500)); combo = getCombo(); if (combo) break; }
     }
-    if (!combo) {
-        alert("Google Translate ist noch nicht bereit.");
-        return;
-    }
-    if (currentLanguage === 'en') {
-        combo.value = 'de';
-        currentLanguage = 'de';
-        if (btn) btn.innerText = "🇺🇸 Original";
-    } else {
-        combo.value = '';
-        currentLanguage = 'en';
-        if (btn) btn.innerText = "🌍 Auf Deutsch";
-    }
+    if (!combo) return;
+    const isEng = currentLanguage === 'en';
+    combo.value = isEng ? 'de' : '';
+    currentLanguage = isEng ? 'de' : 'en';
+    if (btn) btn.innerText = isEng ? "🇺🇸 Original" : "🌍 Auf Deutsch";
     combo.dispatchEvent(new Event('change'));
     resetUITimer();
 }
 
-// Book Loading Logic
 window.addEventListener('DOMContentLoaded', async () => {
     try {
         const storedBook = await localforage.getItem('stored-epub-book');
         const storedName = await localforage.getItem('stored-epub-name');
-        if (storedBook && storedName) {
-            openBook(storedBook, storedName);
-        }
+        if (storedBook && storedName) openBook(storedBook, storedName);
     } catch (err) { console.error('Error loading stored book:', err); }
 });
 
@@ -100,36 +78,42 @@ function openBook(bookData, filename) {
     if (book) { try { book.destroy(); } catch(e) {} }
     viewer.innerHTML = '';
     
-    // V23: THE FIX - Enable allowScriptedContent
     book = ePub(bookData, { allowScriptedContent: true });
+    
+    // V24: BREAKTHROUGH - Force sandbox and scripts to enable pagination
     rendition = book.renderTo("viewer", {
         width: "100%", height: "100%",
         flow: "paginated", manager: "default",
-        allowScriptedContent: true 
+        allowScriptedContent: true,
+        sandbox: "allow-same-origin allow-scripts allow-popups allow-forms"
     });
 
-    rendition.on("rendered", (section, view) => {
-        const doc = view.document || (view.iframe && view.iframe.contentDocument);
-        if (!doc) return; 
-
-        doc.addEventListener('keydown', (e) => {
-            window.dispatchEvent(new KeyboardEvent('keydown', {
-                key: e.key, code: e.code, keyCode: e.keyCode, which: e.which
-            }));
+    // Fail-safe CSS injection: Force column layout even if epub.js fails internally
+    rendition.hooks.content.register((contents) => {
+        contents.addStylesheetRules({
+            "body": {
+                "overflow": "hidden !important",
+                "width": "100vw !important",
+                "height": "100vh !important",
+                "column-fill": "auto !important",
+                "column-gap": "0px !important",
+                "column-width": "100vw !important"
+            },
+            "img": { "max-width": "100% !important", "height": "auto !important" }
         });
-
+        
+        const doc = contents.document;
+        doc.addEventListener('keydown', (e) => {
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: e.key, code: e.code }));
+        });
         doc.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; resetUITimer(); }, {passive: true});
         doc.addEventListener('touchend', (e) => {
-            touchEndX = e.changedTouches[0].screenX;
-            const diff = touchEndX - touchStartX;
-            if (diff < -65) navigate('next');
-            else if (diff > 65) navigate('prev');
+            const diff = e.changedTouches[0].screenX - touchStartX;
+            if (diff < -65) navigate('next'); else if (diff > 65) navigate('prev');
         });
-
         doc.addEventListener('click', (e) => {
-            const win = view.iframe ? view.iframe.contentWindow : window;
-            const x = e.clientX, y = e.clientY, w = win.innerWidth, h = win.innerHeight;
-            if (x > w * 0.25 && x < w * 0.75 && y > h * 0.25 && y < h * 0.75) {
+            const x = e.clientX, w = window.innerWidth;
+            if (x > w * 0.25 && x < w * 0.75) {
                 if (document.body.classList.contains('hidden-ui')) showUI(); else hideUI();
             } else { resetUITimer(); }
         });
@@ -166,31 +150,20 @@ prevBtn.addEventListener('click', (e) => { e.stopPropagation(); navigate('prev')
 nextBtn.addEventListener('click', (e) => { e.stopPropagation(); navigate('next'); });
 
 let synthStatus = { isSpeaking: false };
-
 function toggleTTS() {
     window.speechSynthesis.cancel();
-    if (synthStatus.isSpeaking) {
-        synthStatus.isSpeaking = false;
-        ttsTrigger.innerText = "🔊 Vorlesen";
-        ttsTrigger.style.backgroundColor = "var(--accent)";
-        return;
-    }
-
+    if (synthStatus.isSpeaking) { synthStatus.isSpeaking = false; ttsTrigger.innerText = "🔊 Vorlesen"; return; }
     const activeIframe = viewer.querySelector('iframe');
     const textToRead = activeIframe?.contentDocument?.body?.innerText;
     if (!textToRead) return;
-
     const utterance = new SpeechSynthesisUtterance(textToRead);
     utterance.lang = translateTrigger?.innerText.includes('Original') ? 'de-DE' : 'en-US';
     const voices = window.speechSynthesis.getVoices();
-    utterance.voice = voices.find(v => v.lang.startsWith(utterance.lang.split('-')[0])) || voices[0];
-    if (ttsSpeed) utterance.rate = parseFloat(ttsSpeed.value) || 1.0;
-
+    if (voices.length) utterance.voice = voices.find(v => v.lang.startsWith(utterance.lang.split('-')[0])) || voices[0];
+    if (ttsSpeed) utterance.rate = parseFloat(ttsSpeed.value);
     utterance.onstart = () => { synthStatus.isSpeaking = true; ttsTrigger.innerText = "⏹ Stopp"; ttsTrigger.style.backgroundColor = "#ef4444"; };
     utterance.onend = () => { synthStatus.isSpeaking = false; ttsTrigger.innerText = "🔊 Vorlesen"; ttsTrigger.style.backgroundColor = "var(--accent)"; };
     window.speechSynthesis.speak(utterance);
 }
-
-if (ttsTrigger) ttsTrigger.addEventListener('click', () => toggleTTS());
-
+if (ttsTrigger) ttsTrigger.addEventListener('click', toggleTTS);
 showUI();

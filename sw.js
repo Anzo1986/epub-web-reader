@@ -1,4 +1,4 @@
-const CACHE_NAME = 'epub-reader-v23.0';
+const CACHE_NAME = 'epub-reader-v24.0';
 const urlsToCache = [
   './',
   './index.html',
@@ -28,27 +28,18 @@ self.addEventListener('activate', event => {
   );
 });
 
-// V21: URL Repair Engine inside the Service Worker
 self.addEventListener('fetch', event => {
   const url = event.request.url;
-
-  // Detect and fix the corrupted blob paths (e.g. /OEBPS/blob:https://...)
   if (url.includes('/blob:http')) {
     const cleanBlobUrl = url.split('blob:')[1];
     if (cleanBlobUrl) {
-      console.log('[SW] Repaired corrupted blob URL:', cleanBlobUrl);
       event.respondWith(
-        fetch('blob:' + cleanBlobUrl).catch(() => {
-            // Fallback: if browser blocks fetch(blob:), let it pass as original or redirect
-            return Response.redirect('blob:' + cleanBlobUrl, 302);
-        })
+        fetch('blob:' + cleanBlobUrl).catch(() => Response.redirect('blob:' + cleanBlobUrl, 302))
       );
       return;
     }
   }
-
   event.respondWith(
-    caches.match(event.request)
-      .then(response => response || fetch(event.request))
+    caches.match(event.request).then(response => response || fetch(event.request))
   );
 });
