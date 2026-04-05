@@ -73,8 +73,8 @@
 </head>
 <body>
     <script>
-        // V31: Layout Recovery (Back to v29 design)
-        const VERSION = 'v31.0';
+        // V32: Ultimate Navigation (Fixed Chapter Jumping)
+        const VERSION = 'v32.0';
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(registrations => {
                 for (let r of registrations) {
@@ -106,7 +106,7 @@
                     <option value="2.0">2.0x</option>
                 </select>
                 <div class="header-controls">
-                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v31.0</span>
+                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v32.0</span>
                     <button id="tts-trigger" class="upload-btn" style="background-color: var(--accent);">🔊 Vorlesen</button>
                 </div>
 
