@@ -21,7 +21,7 @@ function navigate(direction) {
     setTimeout(() => { navInProgress = false; }, 300);
 }
 
-console.log("App Version: v30.0 (Final Polish)");
+console.log("App Version: v31.0 (Layout Restore)");
 
 window.addEventListener('keydown', (e) => {
     if (e.key === "ArrowLeft") navigate('prev');
@@ -88,15 +88,11 @@ function openBook(bookData, filename) {
     rendition.hooks.content.register((contents) => {
         contents.addStylesheetRules({
             "body": {
-                "overflow": "hidden !important",
-                "width": "100% !important",
-                "height": "100% !important",
-                "column-fill": "auto !important",
-                "column-gap": "0px !important",
-                "column-width": "100vw !important",
                 "margin": "0 !important",
                 "padding": "60px 20px !important",
-                "background": "transparent !important"
+                "background": "transparent !important",
+                "color": "#f8fafc !important",
+                "font-family": "sans-serif !important"
             },
             "img": { "max-width": "100% !important", "height": "auto !important", "display": "block", "margin": "20px auto" },
             "p": { "margin-bottom": "1.5em !important", "line-height": "1.6 !important" }
@@ -107,7 +103,6 @@ function openBook(bookData, filename) {
             window.dispatchEvent(new KeyboardEvent('keydown', { key: e.key, code: e.code }));
         });
 
-        // V30: GESTURE DEBOUNCE - Prevents multiple page skips
         let gestureLocked = false;
         doc.addEventListener('touchstart', (e) => { 
             touchStartX = e.changedTouches[0].screenX; 
@@ -120,7 +115,7 @@ function openBook(bookData, filename) {
             if (Math.abs(diff) > 60) {
                 gestureLocked = true;
                 if (diff < -60) navigate('next'); else if (diff > 60) navigate('prev');
-                setTimeout(() => { gestureLocked = false; }, 500); // 500ms Cooldown
+                setTimeout(() => { gestureLocked = false; }, 500); 
             }
         });
 
