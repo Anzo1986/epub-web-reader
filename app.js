@@ -16,21 +16,30 @@ let synth = window.speechSynthesis;
 let uiTimer = null;
 let currentLanguage = 'en';
 
-console.log("App Version: v22.0 (Clean Reset)");
-
-function hideUI() {
-    document.body.classList.add('hidden-ui');
+// V23: Robust Navigation State
+let navBlocked = false;
+function navigate(direction) {
+    if (!rendition || navBlocked) return;
+    navBlocked = true;
+    
+    if (direction === 'next') rendition.next();
+    else rendition.prev();
+    
+    showUI();
+    setTimeout(() => { navBlocked = false; }, 350); 
 }
 
-function showUI() {
-    document.body.classList.remove('hidden-ui');
-    resetUITimer();
-}
+console.log("App Version: v23.0 (Engine Fix)");
 
-function resetUITimer() {
-    if (uiTimer) clearTimeout(uiTimer);
-    uiTimer = setTimeout(hideUI, 3500); 
-}
+// Global listeners
+window.addEventListener('keydown', (e) => {
+    if (e.key === "ArrowLeft") navigate('prev');
+    if (e.key === "ArrowRight") navigate('next');
+});
+
+function hideUI() { document.body.classList.add('hidden-ui'); }
+function showUI() { document.body.classList.remove('hidden-ui'); resetUITimer(); }
+function resetUITimer() { if (uiTimer) clearTimeout(uiTimer); uiTimer = setTimeout(hideUI, 3500); }
 
 async function toggleLanguage() {
     const btn = document.getElementById('translate-trigger');
@@ -46,7 +55,6 @@ async function toggleLanguage() {
     }
     if (!combo) {
         alert("Google Translate ist noch nicht bereit.");
-        if (btn) btn.innerText = "🌍 Auf Deutsch";
         return;
     }
     if (currentLanguage === 'en') {
@@ -68,12 +76,9 @@ window.addEventListener('DOMContentLoaded', async () => {
         const storedBook = await localforage.getItem('stored-epub-book');
         const storedName = await localforage.getItem('stored-epub-name');
         if (storedBook && storedName) {
-            console.log('Found stored book. Loading...');
             openBook(storedBook, storedName);
         }
-    } catch (err) {
-        console.error('Error loading stored book:', err);
-    }
+    } catch (err) { console.error('Error loading stored book:', err); }
 });
 
 uploadInput.addEventListener('change', function(e) {
@@ -92,63 +97,50 @@ uploadInput.addEventListener('change', function(e) {
 });
 
 function openBook(bookData, filename) {
-    if (book) {
-        try { book.destroy(); } catch(e) {}
-    }
+    if (book) { try { book.destroy(); } catch(e) {} }
     viewer.innerHTML = '';
     
-    book = ePub(bookData);
-    // V22: NO SANDBOX. Let epub.js determine pagination correctly.
+    // V23: THE FIX - Enable allowScriptedContent
+    book = ePub(bookData, { allowScriptedContent: true });
     rendition = book.renderTo("viewer", {
-        width: "100%",
-        height: "100%",
-        flow: "paginated",
-        manager: "default"
+        width: "100%", height: "100%",
+        flow: "paginated", manager: "default",
+        allowScriptedContent: true 
     });
 
-    // Simple, reliable binding
     rendition.on("rendered", (section, view) => {
         const doc = view.document || (view.iframe && view.iframe.contentDocument);
         if (!doc) return; 
 
-        doc.addEventListener('keyup', (e) => {
-            if (e.key === "ArrowLeft") rendition.prev();
-            if (e.key === "ArrowRight") rendition.next();
+        doc.addEventListener('keydown', (e) => {
+            window.dispatchEvent(new KeyboardEvent('keydown', {
+                key: e.key, code: e.code, keyCode: e.keyCode, which: e.which
+            }));
         });
 
-        doc.addEventListener('touchstart', (e) => {
-            touchStartX = e.changedTouches[0].screenX;
-            resetUITimer();
-        }, {passive: true});
-
+        doc.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; resetUITimer(); }, {passive: true});
         doc.addEventListener('touchend', (e) => {
             touchEndX = e.changedTouches[0].screenX;
             const diff = touchEndX - touchStartX;
-            if (diff < -65) rendition.next();
-            else if (diff > 65) rendition.prev();
+            if (diff < -65) navigate('next');
+            else if (diff > 65) navigate('prev');
         });
 
         doc.addEventListener('click', (e) => {
-            const x = e.clientX;
-            const y = e.clientY;
             const win = view.iframe ? view.iframe.contentWindow : window;
-            const w = win.innerWidth;
-            const h = win.innerHeight;
+            const x = e.clientX, y = e.clientY, w = win.innerWidth, h = win.innerHeight;
             if (x > w * 0.25 && x < w * 0.75 && y > h * 0.25 && y < h * 0.75) {
                 if (document.body.classList.contains('hidden-ui')) showUI(); else hideUI();
             } else { resetUITimer(); }
         });
     });
 
-    rendition.themes.register("dark", {
-        "body": { "background": "#0f172a", "color": "#f8fafc" }
-    });
+    rendition.themes.register("dark", { "body": { "background": "#0f172a", "color": "#f8fafc" } });
     rendition.themes.select("dark");
 
     book.ready.then(() => {
         const savedLocation = localStorage.getItem(`epub-location-${filename}`);
-        if (savedLocation) rendition.display(savedLocation);
-        else rendition.display();
+        rendition.display(savedLocation || undefined);
         book.locations.generate(1024).then(() => updatePageInfo());
     });
 
@@ -157,8 +149,6 @@ function openBook(bookData, filename) {
         updatePageInfo();
         if (synth && synth.speaking) synth.cancel(); 
     });
-
-    rendition.on("click", (e) => showUI());
 }
 
 function updatePageInfo() {
@@ -167,38 +157,40 @@ function updatePageInfo() {
         const loc = rendition.currentLocation();
         if(loc && loc.start) {
             let percent = book.locations.percentageFromCfi(loc.start.cfi);
-            pageInfo.innerText = Math.round(percent * 100) + "% gelesen";
+            pageInfo.innerText = Math.round(percent * 100) + "% gesehen";
         }
     } catch(e) {}
 }
 
-prevBtn.addEventListener('click', (e) => { e.stopPropagation(); rendition.prev(); });
-nextBtn.addEventListener('click', (e) => { e.stopPropagation(); rendition.next(); });
+prevBtn.addEventListener('click', (e) => { e.stopPropagation(); navigate('prev'); });
+nextBtn.addEventListener('click', (e) => { e.stopPropagation(); navigate('next'); });
 
-document.body.addEventListener('click', (e) => {
-    if (e.target === document.body || e.target === viewer) {
-        if (document.body.classList.contains('hidden-ui')) showUI(); else hideUI();
-    }
-});
+let synthStatus = { isSpeaking: false };
 
 function toggleTTS() {
     window.speechSynthesis.cancel();
+    if (synthStatus.isSpeaking) {
+        synthStatus.isSpeaking = false;
+        ttsTrigger.innerText = "🔊 Vorlesen";
+        ttsTrigger.style.backgroundColor = "var(--accent)";
+        return;
+    }
+
     const activeIframe = viewer.querySelector('iframe');
     const textToRead = activeIframe?.contentDocument?.body?.innerText;
     if (!textToRead) return;
+
     const utterance = new SpeechSynthesisUtterance(textToRead);
-    const isTranslated = !!(translateTrigger && translateTrigger.innerText.includes('Original'));
-    utterance.lang = isTranslated ? 'de-DE' : 'en-US';
+    utterance.lang = translateTrigger?.innerText.includes('Original') ? 'de-DE' : 'en-US';
     const voices = window.speechSynthesis.getVoices();
-    const voice = voices.find(v => v.lang.startsWith(utterance.lang.split('-')[0])) || voices[0];
-    if (voice) utterance.voice = voice;
+    utterance.voice = voices.find(v => v.lang.startsWith(utterance.lang.split('-')[0])) || voices[0];
     if (ttsSpeed) utterance.rate = parseFloat(ttsSpeed.value) || 1.0;
+
     utterance.onstart = () => { synthStatus.isSpeaking = true; ttsTrigger.innerText = "⏹ Stopp"; ttsTrigger.style.backgroundColor = "#ef4444"; };
     utterance.onend = () => { synthStatus.isSpeaking = false; ttsTrigger.innerText = "🔊 Vorlesen"; ttsTrigger.style.backgroundColor = "var(--accent)"; };
     window.speechSynthesis.speak(utterance);
 }
 
-let synthStatus = { isSpeaking: false };
 if (ttsTrigger) ttsTrigger.addEventListener('click', () => toggleTTS());
 
 showUI();

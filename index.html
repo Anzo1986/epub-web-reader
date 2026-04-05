@@ -18,6 +18,20 @@
     <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
 </head>
 <body>
+    <script>
+        // V23 HARD RESET: Force purge old service workers if version mismatch
+        const EXPECTED_VERSION = 'v23.0';
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+                for (let registration of registrations) {
+                    if (registration.active && !registration.active.scriptURL.includes(EXPECTED_VERSION)) {
+                        console.log('Hard Reset: Purging old SW...', registration.active.scriptURL);
+                        registration.unregister().then(() => window.location.reload(true));
+                    }
+                }
+            });
+        }
+    </script>
     
     <!-- UI Overlay (Auto-hides when tapping middle of screen) -->
     <header id="header" class="glass-panel slide-down">
@@ -33,7 +47,7 @@
                     <option value="2.0">2.0x</option>
                 </select>
                 <div class="header-controls">
-                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v22.0</span>
+                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v23.0</span>
                     <button id="tts-trigger" class="upload-btn" style="background-color: var(--accent);">🔊 Vorlesen</button>
                 </div>
 
