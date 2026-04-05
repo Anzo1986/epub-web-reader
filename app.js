@@ -21,7 +21,7 @@ function navigate(direction) {
     setTimeout(() => { navInProgress = false; }, 300);
 }
 
-console.log("App Version: v36.0 (Safe-Paging)");
+console.log("App Version: v37.0 (Back-to-Basics)");
 
 window.addEventListener('keydown', (e) => {
     if (e.key === "ArrowLeft") navigate('prev');
@@ -79,10 +79,8 @@ function openBook(bookData, filename) {
     book = ePub(bookData, { allowScriptedContent: true });
     
     rendition = book.renderTo("viewer", {
-        width: window.innerWidth - 20, // Final check: Matches .viewer-container padding
-        height: window.innerHeight - 150, // Final check: Matches 75px top/bottom
-        flow: "paginated", 
-        manager: "default",
+        width: "100%", height: "100%",
+        flow: "paginated", manager: "default",
         spread: "none",
         allowScriptedContent: true,
         sandbox: "allow-same-origin allow-scripts allow-popups allow-forms"
@@ -92,13 +90,10 @@ function openBook(bookData, filename) {
         contents.addStylesheetRules({
             "body": {
                 "margin": "0 !important",
-                "padding": "0 20px !important",
+                "padding": "60px 20px !important",
                 "background": "transparent !important",
                 "color": "#f8fafc !important",
-                "font-family": "sans-serif !important",
-                "column-width": "100vw !important",
-                "column-gap": "0 !important",
-                "column-fill": "auto !important"
+                "font-family": "sans-serif !important"
             },
             "img": { "max-width": "100% !important", "height": "auto !important", "display": "block", "margin": "20px auto" },
             "p": { "margin-bottom": "1.5em !important", "line-height": "1.6 !important" }
@@ -138,10 +133,10 @@ function openBook(bookData, filename) {
         });
     });
     
-    // V36: Safe-Paging - Ensure layout is recalibrated for columns
+    // V37: Ensure layout is calibrated for full screen
     rendition.on("started", () => {
-        const w = window.innerWidth - 20;
-        const h = window.innerHeight - 150;
+        const w = window.innerWidth;
+        const h = window.innerHeight;
         setTimeout(() => rendition.resize(w, h), 500);
     });
 

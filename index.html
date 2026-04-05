@@ -37,14 +37,15 @@
         body { top: 0 !important; }
         .skiptranslate { display: none !important; }
 
-        /* V34: Restricted Viewport for Perfect Pagination */
+        /* Viewer takes FULL screen */
         .viewer-container {
             position: absolute;
-            top: 75px;    /* Leave room for Header */
-            bottom: 75px; /* Leave room for Footer/Controls */
-            left: 10px;
-            right: 10px;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             z-index: 1;
+            background-color: var(--bg);
         }
 
         .glass-panel {
@@ -73,8 +74,8 @@
 </head>
 <body>
     <script>
-        // V36: Final Safe-Paging Breakthrough
-        const VERSION = 'v36.0';
+        // V37: Back-to-Basics (REVERT TO WORKING v33 LAYOUT)
+        const VERSION = 'v37.0';
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(registrations => {
                 for (let r of registrations) {
@@ -106,7 +107,7 @@
                     <option value="2.0">2.0x</option>
                 </select>
                 <div class="header-controls">
-                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v36.0</span>
+                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v37.0</span>
                     <button id="tts-trigger" class="upload-btn" style="background-color: var(--accent);">🔊 Vorlesen</button>
                 </div>
 
@@ -149,8 +150,8 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js?v=36.0').then(registration => {
-                    console.log('V36 SW registered');
+                navigator.serviceWorker.register('./sw.js?v=37.0').then(registration => {
+                    console.log('V37 SW registered');
                 });
             });
         }
