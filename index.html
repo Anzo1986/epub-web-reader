@@ -32,7 +32,10 @@
                     <option value="1.5">1.5x</option>
                     <option value="2.0">2.0x</option>
                 </select>
-                <button id="tts-trigger" class="upload-btn" style="background-color: var(--accent);">🔊 Vorlesen</button>
+                <div class="header-controls">
+                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v20.0</span>
+                    <button id="tts-trigger" class="upload-btn" style="background-color: var(--accent);">🔊 Vorlesen</button>
+                </div>
 
                 <!-- Custom Button that will trigger the Google Translate dropdown -->
                 <button id="translate-trigger" class="upload-btn" style="background-color: var(--success); border-color: var(--success);">🌍 Übersetzen</button>
@@ -73,7 +76,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js?v=19.0').then(registration => {
+                navigator.serviceWorker.register('./sw.js?v=20.0').then(registration => {
                     console.log('SW registered: ', registration);
                 }).catch(registrationError => {
                     console.log('SW registration failed: ', registrationError);
