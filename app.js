@@ -16,21 +16,21 @@ let synth = window.speechSynthesis;
 let uiTimer = null;
 let currentLanguage = 'en';
 
-// Global Navigation Lock to stop the "Skipping Pages" bug
-let isNavigating = false;
+// V19 Navigation Lock: Absolute protection against page skipping
+let navLock = false;
 function navigate(direction) {
-    if (!rendition || isNavigating) return;
-    isNavigating = true;
+    if (!rendition || navLock) return;
+    navLock = true;
     
     if (direction === 'next') rendition.next();
     else rendition.prev();
     
     showUI();
-    // 250ms Lock: Strictly ignore any other calls during this time
-    setTimeout(() => { isNavigating = false; }, 250);
+    // 300ms Cooldown: During this time, EVERY other navigation attempt is killed
+    setTimeout(() => { navLock = false; }, 300);
 }
 
-console.log("App Version: v18.0 (Deep Fix & Protection)");
+console.log("App Version: v19.0 (Final Correction)");
 
 function hideUI() {
     document.body.classList.add('hidden-ui');
@@ -76,21 +76,22 @@ async function toggleLanguage() {
     resetUITimer();
 }
 
-// Sandbox Enforcer: Catch the iframe before epub.js finishes setup
+// Sandbox Watchdog: Force permissions as soon as the iframe is injected
 const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-        mutation.addedNodes.forEach((node) => {
+    for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
             if (node.tagName === 'IFRAME') {
                 node.setAttribute('sandbox', 'allow-same-origin allow-scripts');
             } else if (node.querySelectorAll) {
-                node.querySelectorAll('iframe').forEach(f => f.setAttribute('sandbox', 'allow-same-origin allow-scripts'));
+                const iframes = node.querySelectorAll('iframe');
+                iframes.forEach(f => f.setAttribute('sandbox', 'allow-same-origin allow-scripts'));
             }
-        });
-    });
+        }
+    }
 });
 observer.observe(viewer, { childList: true, subtree: true });
 
-// Load stored book data
+// Book Loading Logic
 window.addEventListener('DOMContentLoaded', async () => {
     try {
         const storedBook = await localforage.getItem('stored-epub-book');
@@ -98,8 +99,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         if (storedBook && storedName) {
             console.log('Found stored book. Loading...');
             openBook(storedBook, storedName);
-        } else {
-            alert('Willkommen! Bitte lade eine EPUB-Datei.');
         }
     } catch (err) {
         console.error('Error loading stored book:', err);
@@ -122,7 +121,9 @@ uploadInput.addEventListener('change', function(e) {
 });
 
 function openBook(bookData, filename) {
-    if (book) book.destroy();
+    if (book) {
+        try { book.destroy(); } catch(e) {}
+    }
     viewer.innerHTML = '';
     
     book = ePub(bookData);
@@ -133,11 +134,15 @@ function openBook(bookData, filename) {
         manager: "default"
     });
 
-    // Navigation Fixed: Only bind ONCE per document/iframe
+    // V19 Multi-Step Navigation & Protection Hook
     rendition.on("rendered", (section, view) => {
-        const doc = view.document;
-        if (doc.dataset.initialized === "true") return; // Protection against stacking
-        doc.dataset.initialized = "true";
+        // Robust document discovery
+        const doc = view.document || (view.iframe && view.iframe.contentDocument);
+        if (!doc) return; 
+
+        // Protection against double-binding
+        if (doc.dataset && doc.dataset.v19Bound === "true") return;
+        if (doc.dataset) doc.dataset.v19Bound = "true";
 
         doc.addEventListener('keyup', (e) => {
             if (e.key === "ArrowLeft") navigate('prev');
@@ -147,46 +152,52 @@ function openBook(bookData, filename) {
         doc.addEventListener('touchstart', (e) => {
             touchStartX = e.changedTouches[0].screenX;
             resetUITimer();
-        });
+        }, {passive: true});
 
         doc.addEventListener('touchend', (e) => {
             touchEndX = e.changedTouches[0].screenX;
-            if (touchEndX < touchStartX - 65) navigate('next');
-            if (touchEndX > touchStartX + 65) navigate('prev');
+            const diff = touchEndX - touchStartX;
+            if (diff < -60) navigate('next');
+            else if (diff > 60) navigate('prev');
         });
 
         doc.addEventListener('click', (e) => {
             const x = e.clientX;
             const y = e.clientY;
-            const w = view.iframe.contentWindow.innerWidth;
-            const h = view.iframe.contentWindow.innerHeight;
+            const win = view.iframe ? view.iframe.contentWindow : window;
+            const w = win.innerWidth;
+            const h = win.innerHeight;
+            // Center tap
             if (x > w * 0.25 && x < w * 0.75 && y > h * 0.25 && y < h * 0.75) {
                 if (document.body.classList.contains('hidden-ui')) showUI(); else hideUI();
-            } else { resetUITimer(); }
+            } else { 
+                resetUITimer(); 
+            }
         });
     });
 
-    // Image Repair v4: Pre-emptive attribute cleaning
+    // Image Repair v5: Aggressive cleanup before and after render
     rendition.hooks.content.register((contents) => {
         const doc = contents.document;
-        const scan = () => {
-            doc.querySelectorAll('img').forEach(img => {
+        const fix = () => {
+            if (!doc) return;
+            const images = doc.querySelectorAll('img');
+            images.forEach(img => {
                 const src = img.getAttribute('src');
                 const blobMatch = src ? src.match(/blob:https?:\/\/[^\s"']+/) : null;
                 if (blobMatch && src !== blobMatch[0]) {
-                    img.removeAttribute('src'); // Force drop bad URL
-                    img.src = blobMatch[0];      // Set correct one
+                    img.removeAttribute('src'); // Wipe bad prefix
+                    img.src = blobMatch[0];      // Set clean blob
                 }
             });
         };
-        scan();
-        setTimeout(scan, 200); 
+        fix();
+        setTimeout(fix, 150); 
+        setTimeout(fix, 500); 
     });
 
     rendition.themes.register("dark", {
-        "body": { "background": "#0f172a", "color": "#f8fafc" },
-        "p": { "font-size": "1.1rem", "line-height": "1.6" },
-        "h1, h2, h3, h4": { "color": "#f8fafc" }
+        "body": { "background": "#0f172a", "color": "#f8fafc" }
     });
     rendition.themes.select("dark");
 
@@ -199,10 +210,10 @@ function openBook(bookData, filename) {
         book.locations.generate(1024).then(() => updatePageInfo());
     });
 
-    rendition.on("relocated", function(location) {
+    rendition.on("relocated", (location) => {
         localStorage.setItem(`epub-location-${filename}`, location.start.cfi);
         updatePageInfo();
-        if (synth && synth.speaking) synth.cancel(); // Stop TTS on turn
+        if (synth && synth.speaking) synth.cancel(); 
     });
 
     rendition.on("click", (e) => showUI());
@@ -210,11 +221,13 @@ function openBook(bookData, filename) {
 
 function updatePageInfo() {
     if(!book || !rendition) return;
-    const loc = rendition.currentLocation();
-    if(loc && loc.start) {
-        let percent = book.locations.percentageFromCfi(loc.start.cfi);
-        pageInfo.innerText = Math.round(percent * 100) + "% gelesen";
-    }
+    try {
+        const loc = rendition.currentLocation();
+        if(loc && loc.start) {
+            let percent = book.locations.percentageFromCfi(loc.start.cfi);
+            pageInfo.innerText = Math.round(percent * 100) + "% gelesen";
+        }
+    } catch(e) {}
 }
 
 prevBtn.addEventListener('click', (e) => { e.stopPropagation(); navigate('prev'); });
