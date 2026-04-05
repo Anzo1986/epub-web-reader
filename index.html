@@ -19,18 +19,20 @@
 </head>
 <body>
     <script>
-        // V25 PURGE: Force delete all caches and service workers for a clean start
-        const VERSION = 'v25.0';
+        // V26 PURGE: Force delete all caches and service workers for a clean start
+        const VERSION = 'v26.0';
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(registrations => {
+                let needsReload = false;
                 for (let r of registrations) {
                     if (!r.active || !r.active.scriptURL.includes(VERSION)) {
                         console.log('Purging old Service Worker...', r.active ? r.active.scriptURL : 'unknown');
                         r.unregister();
+                        needsReload = true;
                     }
                 }
+                if (needsReload) setTimeout(() => window.location.reload(true), 500);
             });
-            // Delete all caches to ensure no v20.0 files remain
             caches.keys().then(names => {
                 for (let name of names) {
                     if (name !== 'epub-reader-' + VERSION) caches.delete(name);
@@ -53,7 +55,7 @@
                     <option value="2.0">2.0x</option>
                 </select>
                 <div class="header-controls">
-                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v25.0</span>
+                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v26.0</span>
                     <button id="tts-trigger" class="upload-btn" style="background-color: var(--accent);">🔊 Vorlesen</button>
                 </div>
 

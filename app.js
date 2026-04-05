@@ -12,18 +12,16 @@ const ttsSpeed = document.getElementById('tts-speed');
 
 let touchStartX = 0, touchEndX = 0, synth = window.speechSynthesis, uiTimer = null, currentLanguage = 'en';
 
-// V24 Navigation Engine: State-Locked + Debounced
 let navInProgress = false;
 function navigate(direction) {
     if (!rendition || navInProgress) return;
     navInProgress = true;
     if (direction === 'next') rendition.next(); else rendition.prev();
     showUI();
-    // Hardware-Debounce: Ensures 300ms minimum between flips
     setTimeout(() => { navInProgress = false; }, 300);
 }
 
-console.log("App Version: v24.0 (Breakthrough)");
+console.log("App Version: v26.0 (Recovery)");
 
 window.addEventListener('keydown', (e) => {
     if (e.key === "ArrowLeft") navigate('prev');
@@ -80,7 +78,14 @@ function openBook(bookData, filename) {
     
     book = ePub(bookData, { allowScriptedContent: true });
     
-    // V25: Refined Layout - Use 100% instead of 100vh to avoid mobile viewport issues
+    // V26: FIXED REDITION CALL (Was missing in v25)
+    rendition = book.renderTo("viewer", {
+        width: "100%", height: "100%",
+        flow: "paginated", manager: "default",
+        allowScriptedContent: true,
+        sandbox: "allow-same-origin allow-scripts allow-popups allow-forms"
+    });
+
     rendition.hooks.content.register((contents) => {
         contents.addStylesheetRules({
             "body": {
@@ -93,8 +98,7 @@ function openBook(bookData, filename) {
                 "margin": "0 !important",
                 "padding": "0 !important"
             },
-            "img": { "max-width": "100% !important", "height": "auto !important", "display": "block", "margin": "0 auto" },
-            "p": { "margin": "1em 0 !important" }
+            "img": { "max-width": "100% !important", "height": "auto !important", "display": "block", "margin": "10px auto" }
         });
         
         const doc = contents.document;
@@ -136,7 +140,7 @@ function updatePageInfo() {
         const loc = rendition.currentLocation();
         if(loc && loc.start) {
             let percent = book.locations.percentageFromCfi(loc.start.cfi);
-            pageInfo.innerText = Math.round(percent * 100) + "% gesehen";
+            pageInfo.innerText = Math.round(percent * 100) + "% gelesen";
         }
     } catch(e) {}
 }
