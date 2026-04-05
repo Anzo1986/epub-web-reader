@@ -73,8 +73,8 @@
 </head>
 <body>
     <script>
-        // V27 LOOP BREAKER: Purge old SWs but NEVER auto-reload
-        const VERSION = 'v27.0';
+        // V29: Native Pagination reset
+        const VERSION = 'v29.0';
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(registrations => {
                 for (let r of registrations) {
@@ -106,7 +106,7 @@
                     <option value="2.0">2.0x</option>
                 </select>
                 <div class="header-controls">
-                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v27.0</span>
+                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v29.0</span>
                     <button id="tts-trigger" class="upload-btn" style="background-color: var(--accent);">🔊 Vorlesen</button>
                 </div>
 
@@ -121,7 +121,7 @@
     </header>
 
     <!-- Reading Area -->
-    <div id="viewer" class="viewer"></div>
+    <div id="viewer" class="viewer-container"></div>
 
     <!-- Pagination Controls Overlay -->
     <div id="controls" class="controls glass-panel slide-up">

@@ -21,7 +21,7 @@ function navigate(direction) {
     setTimeout(() => { navInProgress = false; }, 300);
 }
 
-console.log("App Version: v28.0 (The Perfect View)");
+console.log("App Version: v29.0 (Native Pagination)");
 
 window.addEventListener('keydown', (e) => {
     if (e.key === "ArrowLeft") navigate('prev');
@@ -88,17 +88,14 @@ function openBook(bookData, filename) {
     rendition.hooks.content.register((contents) => {
         contents.addStylesheetRules({
             "body": {
-                "overflow": "hidden !important",
-                "width": "100% !important",
-                "height": "100% !important",
-                "column-fill": "auto !important",
-                "column-gap": "0px !important",
-                "column-width": "100vw !important",
                 "margin": "0 !important",
-                "padding": "20px 0 !important"
+                "padding": "60px 20px !important",
+                "background": "transparent !important",
+                "color": "#f8fafc !important",
+                "font-family": "sans-serif !important"
             },
             "img": { "max-width": "100% !important", "height": "auto !important", "display": "block", "margin": "20px auto" },
-            "p": { "margin-bottom": "20px !important", "line-height": "1.6 !important" }
+            "p": { "margin-bottom": "1.5em !important", "line-height": "1.6 !important" }
         });
         
         const doc = contents.document;
