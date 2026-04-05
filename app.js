@@ -17,7 +17,7 @@ let currentUtterance = null;
 let uiTimer = null;
 let currentLanguage = 'en';
 
-console.log("App Version: v17.0 (Navigation & Media Final)");
+console.log("App Version: v17.1 (Hotfix)");
 
 function hideUI() {
     document.body.classList.add('hidden-ui');
@@ -114,9 +114,15 @@ function openBook(bookData, filename) {
     }
     viewer.innerHTML = '';
 
-    book = ePub(bookData);
-    
     // Render
+    rendition = book.renderTo("viewer", {
+        width: "100%",
+        height: "100%",
+        flow: "paginated",
+        manager: "default",
+        sandbox: "allow-same-origin allow-scripts"
+    });
+
     // Clean navigation: using epub.js built-in managers while avoiding listener stacking
     rendition.on("rendered", (section, view) => {
         const doc = view.document;
