@@ -17,7 +17,7 @@ let currentUtterance = null;
 let uiTimer = null;
 let currentLanguage = 'en';
 
-console.log("App Version: v10.0 (Clean Build)");
+console.log("App Version: v11.0 (Stability & Sandbox Fix)");
 
 function hideUI() {
     document.body.classList.add('hidden-ui');
@@ -33,26 +33,39 @@ function resetUITimer() {
     uiTimer = setTimeout(hideUI, 3500); 
 }
 
-function toggleLanguage() {
-    const combo = document.querySelector('.goog-te-combo');
+async function toggleLanguage() {
+    const btn = document.getElementById('translate-trigger');
+    
+    // Polling function to wait for Google Translate widget
+    const getCombo = () => document.querySelector('.goog-te-combo');
+    
+    let combo = getCombo();
     if (!combo) {
-        console.warn('Google Translate combo not found yet. Initializing...');
-        // If not found, it might mean the widget is still loading.
-        // We try to trigger the hidden element once to make sure it exists.
+        if (btn) btn.innerText = "⏳ Lädt...";
+        // Wait up to 5 seconds
+        for (let i = 0; i < 10; i++) {
+            await new Promise(r => setTimeout(r, 500));
+            combo = getCombo();
+            if (combo) break;
+        }
+    }
+
+    if (!combo) {
+        alert("Google Translate ist noch nicht bereit. Bitte kurz warten und erneut versuchen.");
+        if (btn) btn.innerText = "🌍 Auf Deutsch";
         return;
     }
 
     if (currentLanguage === 'en') {
         combo.value = 'de';
         currentLanguage = 'de';
-        if (translateTrigger) translateTrigger.innerText = "🇺🇸 Original";
+        if (btn) btn.innerText = "🇺🇸 Original";
     } else {
         combo.value = ''; // Original
         currentLanguage = 'en';
-        if (translateTrigger) translateTrigger.innerText = "🌍 Auf Deutsch";
+        if (btn) btn.innerText = "🌍 Auf Deutsch";
     }
 
-    // Trigger the change event so Google recognizes the selection
     combo.dispatchEvent(new Event('change'));
     resetUITimer();
 }
@@ -107,9 +120,9 @@ function openBook(bookData, filename) {
     rendition = book.renderTo("viewer", {
         width: "100%",
         height: "100%",
-        spread: "none",
-        manager: "continuous",
-        flow: "paginated"
+        flow: "paginated",
+        manager: "default",
+        allowScripts: true // Fixes "about:srcdoc" sandbox issues
     });
 
     // Dark mode for the iframe content
@@ -122,17 +135,24 @@ function openBook(bookData, filename) {
 
     // Precise position handling
     book.ready.then(() => {
-        // Generate locations for accurate progress tracking
-        return book.locations.generate(1600); 
-    }).then(() => {
         const savedLocation = localStorage.getItem(`epub-location-${filename}`);
         if (savedLocation) {
             console.log('Jumping to saved location:', savedLocation);
-            rendition.display(savedLocation);
+            // Use try/catch to prevent crashes on invalid CFI
+            try {
+                rendition.display(savedLocation);
+            } catch (e) {
+                console.error("Failed to jump to CFI:", e);
+                rendition.display();
+            }
         } else {
             rendition.display();
         }
-        updatePageInfo();
+        
+        // Generate locations in background for progress bar
+        book.locations.generate(1024).then(() => {
+            updatePageInfo();
+        });
     });
 
     rendition.on("relocated", function(location) {
