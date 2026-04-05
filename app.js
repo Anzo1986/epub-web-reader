@@ -17,7 +17,7 @@ let currentUtterance = null;
 let uiTimer = null;
 let currentLanguage = 'en';
 
-console.log("App Version: v16.0 (Core Stability)");
+console.log("App Version: v17.0 (Navigation & Media Final)");
 
 function hideUI() {
     document.body.classList.add('hidden-ui');
@@ -117,32 +117,57 @@ function openBook(bookData, filename) {
     book = ePub(bookData);
     
     // Render
-    // Render
-    rendition = book.renderTo("viewer", {
-        width: "100%",
-        height: "100%",
-        flow: "paginated",
-        manager: "default",
-        sandbox: "allow-same-origin allow-scripts" // Moved back to primary constructor
+    // Clean navigation: using epub.js built-in managers while avoiding listener stacking
+    rendition.on("rendered", (section, view) => {
+        const doc = view.document;
+        
+        // Remove existing listeners if this is a re-render to avoid "skipping pages"
+        const cleanNavigation = (e) => {
+            if (e.key === "ArrowLeft") { rendition.prev(); showUI(); }
+            if (e.key === "ArrowRight") { rendition.next(); showUI(); }
+        };
+
+        const handleSwipeStart = (e) => { touchStartX = e.changedTouches[0].screenX; };
+        const handleSwipeEnd = (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            if (touchEndX < touchStartX - 60) { rendition.next(); showUI(); }
+            if (touchEndX > touchStartX + 60) { rendition.prev(); showUI(); }
+        };
+
+        // UI Toggle in middle 50%
+        const handleCenterTap = (e) => {
+            const x = e.clientX;
+            const y = e.clientY;
+            const w = view.iframe.contentWindow.innerWidth;
+            const h = view.iframe.contentWindow.innerHeight;
+            if (x > w * 0.25 && x < w * 0.75 && y > h * 0.25 && y < h * 0.75) {
+                if (document.body.classList.contains('hidden-ui')) { showUI(); } else { hideUI(); }
+            } else {
+                resetUITimer();
+            }
+        };
+
+        doc.removeEventListener('keyup', cleanNavigation);
+        doc.removeEventListener('touchstart', handleSwipeStart);
+        doc.removeEventListener('touchend', handleSwipeEnd);
+        doc.removeEventListener('click', handleCenterTap);
+
+        doc.addEventListener('keyup', cleanNavigation);
+        doc.addEventListener('touchstart', handleSwipeStart);
+        doc.addEventListener('touchend', handleSwipeEnd);
+        doc.addEventListener('click', handleCenterTap);
+        
+        // Ensure UI timer is reset on any interaction
+        doc.addEventListener('touchstart', () => resetUITimer());
     });
 
-    // Final Stability: Explicitly handle sandbox error and UI toggle
-    rendition.on("rendered", (e, iframe) => {
-        // Reset timer on any touch inside the iframe
-        const iframeDoc = iframe.document;
-        if (iframeDoc) {
-            iframeDoc.addEventListener('touchstart', () => resetUITimer());
-        }
-    });
-
-    // Final Image Repair Hook: Fix absolute-prefixed blob URLs
+    // Image Repair v3: Robust regex for blob URLs (replaces incorrectly prefixed ones)
     rendition.hooks.content.register((contents) => {
         const doc = contents.document;
         const fixImages = () => {
             const images = doc.querySelectorAll('img');
             images.forEach(img => {
                 const src = img.getAttribute('src');
-                // Regex matches blob URLs even if they are prefixed by the origin
                 const blobMatch = src ? src.match(/blob:https?:\/\/[^\s"']+/) : null;
                 if (blobMatch && src !== blobMatch[0]) {
                     img.src = blobMatch[0];
@@ -150,11 +175,10 @@ function openBook(bookData, filename) {
             });
         };
         fixImages();
-        // Fallback for delay-loaded content
-        setTimeout(fixImages, 200);
+        setTimeout(fixImages, 250); // Fallback for delayed loading
     });
 
-    // Dark mode for the iframe content
+    // Dark mode
     rendition.themes.register("dark", {
         "body": { "background": "#0f172a", "color": "#f8fafc" },
         "p": { "font-size": "1.1rem", "line-height": "1.6" },
@@ -165,8 +189,6 @@ function openBook(bookData, filename) {
     // Precise position handling
     book.ready.then(() => {
         const savedLocation = localStorage.getItem(`epub-location-${filename}`);
-        
-        // Final delay for iframe shell stability
         setTimeout(() => {
             if (savedLocation) {
                 console.log('Jumping to saved location:', savedLocation);
@@ -180,10 +202,7 @@ function openBook(bookData, filename) {
                 rendition.display();
             }
         }, 150); 
-
-        book.locations.generate(1024).then(() => {
-            updatePageInfo();
-        });
+        book.locations.generate(1024).then(() => updatePageInfo());
     });
 
     rendition.on("relocated", function(location) {
@@ -193,46 +212,6 @@ function openBook(bookData, filename) {
 
     rendition.on("click", (e) => {
         showUI();
-    });
-
-    // Bind events directly to the iframe document for reliability
-    rendition.on("rendered", (e, iframe) => {
-        const doc = iframe.document.documentElement;
-
-        // Toggle UI on middle tap
-        doc.addEventListener('click', (e) => {
-            const x = e.clientX;
-            const y = e.clientY;
-            const w = iframe.innerWidth;
-            const h = iframe.innerHeight;
-            if (x > w * 0.25 && x < w * 0.75 && y > h * 0.25 && y < h * 0.75) {
-                if (document.body.classList.contains('hidden-ui')) {
-                    showUI();
-                } else {
-                    hideUI();
-                }
-            } else {
-                // If tapping edges (navigation), reset the timer but keep UI state
-                resetUITimer();
-            }
-        });
-
-        // Swipe Gestures
-        doc.addEventListener('touchstart', (e) => {
-            touchStartX = e.changedTouches[0].screenX;
-        });
-
-        doc.addEventListener('touchend', (e) => {
-            touchEndX = e.changedTouches[0].screenX;
-            if (touchEndX < touchStartX - 50) { rendition.next(); showUI(); }
-            if (touchEndX > touchStartX + 50) { rendition.prev(); showUI(); }
-        });
-
-        // Arrow Keys
-        doc.addEventListener('keyup', (e) => {
-            if (e.key === "ArrowLeft") { rendition.prev(); showUI(); }
-            if (e.key === "ArrowRight") { rendition.next(); showUI(); }
-        });
     });
 }
 
@@ -309,9 +288,8 @@ function toggleTTS() {
 
     const utterance = new SpeechSynthesisUtterance(textToRead);
     
-    // Auto detect language based on current translation state
-    const isTranslated = document.documentElement.classList.contains('translated-ltr') || 
-                       document.getElementById('translate-toggle').innerText.includes('Original');
+    // Auto detect language: Check if translate button says "Original"
+    const isTranslated = !!(translateTrigger && translateTrigger.innerText.includes('Original'));
     utterance.lang = isTranslated ? 'de-DE' : 'en-US';
     
     // Better mobile voice discovery
