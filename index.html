@@ -73,12 +73,11 @@
 </head>
 <body>
     <script>
-        // V35: The "Iron" Pager + Force Purge
-        const VERSION = 'v35.0';
+        // V36: Final Safe-Paging Breakthrough
+        const VERSION = 'v36.0';
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(registrations => {
                 for (let r of registrations) {
-                    // Forcefully unreg everything that isn't v35
                     if (!r.active || !r.active.scriptURL.includes(VERSION)) {
                         console.log('Force-Kill old SW:', r.active ? r.active.scriptURL : 'pending');
                         r.unregister().then(() => console.log('SW Killed.'));
@@ -99,7 +98,7 @@
             <h1>EPUB Reader</h1>
             <div style="display:flex; gap:10px; align-items:center;">
                 <!-- TTS Controls -->
-                <select id="tts-speed" class="upload-btn" style="background-color: transparent; border: 1px solid var(--accent); padding: 5px;">
+                <select id="tts-speed" class="upload-btn" style="background-color: transparent ; border: 1px solid var(--accent); padding: 5px;">
                     <option value="0.8">0.8x</option>
                     <option value="1.0" selected>1.0x</option>
                     <option value="1.2">1.2x</option>
@@ -107,7 +106,7 @@
                     <option value="2.0">2.0x</option>
                 </select>
                 <div class="header-controls">
-                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v35.0</span>
+                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v36.0</span>
                     <button id="tts-trigger" class="upload-btn" style="background-color: var(--accent);">🔊 Vorlesen</button>
                 </div>
 
@@ -150,8 +149,8 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js?v=35.0').then(registration => {
-                    console.log('V35 SW registered');
+                navigator.serviceWorker.register('./sw.js?v=36.0').then(registration => {
+                    console.log('V36 SW registered');
                 });
             });
         }

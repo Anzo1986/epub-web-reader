@@ -21,7 +21,7 @@ function navigate(direction) {
     setTimeout(() => { navInProgress = false; }, 300);
 }
 
-console.log("App Version: v35.0 (Iron Pager)");
+console.log("App Version: v36.0 (Safe-Paging)");
 
 window.addEventListener('keydown', (e) => {
     if (e.key === "ArrowLeft") navigate('prev');
@@ -95,7 +95,10 @@ function openBook(bookData, filename) {
                 "padding": "0 20px !important",
                 "background": "transparent !important",
                 "color": "#f8fafc !important",
-                "font-family": "sans-serif !important"
+                "font-family": "sans-serif !important",
+                "column-width": "100vw !important",
+                "column-gap": "0 !important",
+                "column-fill": "auto !important"
             },
             "img": { "max-width": "100% !important", "height": "auto !important", "display": "block", "margin": "20px auto" },
             "p": { "margin-bottom": "1.5em !important", "line-height": "1.6 !important" }
@@ -135,7 +138,7 @@ function openBook(bookData, filename) {
         });
     });
     
-    // V35: Iron Pager - Force explicit pixel recalibration
+    // V36: Safe-Paging - Ensure layout is recalibrated for columns
     rendition.on("started", () => {
         const w = window.innerWidth - 20;
         const h = window.innerHeight - 150;
