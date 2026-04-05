@@ -1,14 +1,3 @@
-// V21: Global Element Hook - Catch the iframe before it's even added to the DOM
-const originalCreateElement = document.createElement;
-document.createElement = function(tagName, options) {
-    const el = originalCreateElement.call(document, tagName, options);
-    if (tagName.toLowerCase() === 'iframe') {
-        el.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-popups allow-forms');
-        console.log('[System] Intercepted iframe creation - forcing sandbox');
-    }
-    return el;
-};
-
 let book = null;
 let rendition = null;
 
@@ -27,32 +16,7 @@ let synth = window.speechSynthesis;
 let uiTimer = null;
 let currentLanguage = 'en';
 
-// V21 Navigation Lock: Double-guaranteed
-let navInProgress = false;
-let navCooldown = false;
-
-function navigate(direction) {
-    if (!rendition || navInProgress || navCooldown) return;
-    
-    navInProgress = true; 
-    navCooldown = true;
-    
-    if (direction === 'next') rendition.next();
-    else rendition.prev();
-    
-    showUI();
-    
-    // Safety timer: unlock even if relocated fails
-    setTimeout(() => { navCooldown = false; }, 500); 
-}
-
-console.log("App Version: v21.0 (Deep System Interception)");
-
-// Global Key Listeners
-window.addEventListener('keydown', (e) => {
-    if (e.key === "ArrowLeft") navigate('prev');
-    if (e.key === "ArrowRight") navigate('next');
-});
+console.log("App Version: v22.0 (Clean Reset)");
 
 function hideUI() {
     document.body.classList.add('hidden-ui');
@@ -134,6 +98,7 @@ function openBook(bookData, filename) {
     viewer.innerHTML = '';
     
     book = ePub(bookData);
+    // V22: NO SANDBOX. Let epub.js determine pagination correctly.
     rendition = book.renderTo("viewer", {
         width: "100%",
         height: "100%",
@@ -141,17 +106,14 @@ function openBook(bookData, filename) {
         manager: "default"
     });
 
+    // Simple, reliable binding
     rendition.on("rendered", (section, view) => {
-        const win = view.iframe ? view.iframe.contentWindow : window;
         const doc = view.document || (view.iframe && view.iframe.contentDocument);
         if (!doc) return; 
 
-        // Keyboard Event Propagation
-        doc.addEventListener('keydown', (e) => {
-            window.dispatchEvent(new KeyboardEvent('keydown', {
-                key: e.key, code: e.code, keyCode: e.keyCode, which: e.which,
-                shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, metaKey: e.metaKey
-            }));
+        doc.addEventListener('keyup', (e) => {
+            if (e.key === "ArrowLeft") rendition.prev();
+            if (e.key === "ArrowRight") rendition.next();
         });
 
         doc.addEventListener('touchstart', (e) => {
@@ -162,40 +124,20 @@ function openBook(bookData, filename) {
         doc.addEventListener('touchend', (e) => {
             touchEndX = e.changedTouches[0].screenX;
             const diff = touchEndX - touchStartX;
-            if (diff < -65) navigate('next');
-            else if (diff > 65) navigate('prev');
+            if (diff < -65) rendition.next();
+            else if (diff > 65) rendition.prev();
         });
 
         doc.addEventListener('click', (e) => {
             const x = e.clientX;
             const y = e.clientY;
+            const win = view.iframe ? view.iframe.contentWindow : window;
             const w = win.innerWidth;
             const h = win.innerHeight;
             if (x > w * 0.25 && x < w * 0.75 && y > h * 0.25 && y < h * 0.75) {
                 if (document.body.classList.contains('hidden-ui')) showUI(); else hideUI();
             } else { resetUITimer(); }
         });
-    });
-
-    // Image Repair v7: Aggressive cleaning + SW protection
-    rendition.hooks.content.register((contents) => {
-        const doc = contents.document;
-        if (!doc) return;
-        const repair = () => {
-            doc.querySelectorAll('img').forEach(img => {
-                const src = img.getAttribute('src');
-                if (src && src.includes('blob:')) {
-                    const blobMatch = src.match(/blob:https?:\/\/[^\s"']+/);
-                    if (blobMatch && src !== blobMatch[0]) {
-                        img.removeAttribute('src'); 
-                        img.src = blobMatch[0];
-                    }
-                }
-            });
-        };
-        repair();
-        setTimeout(repair, 100);
-        setTimeout(repair, 500);
     });
 
     rendition.themes.register("dark", {
@@ -214,7 +156,6 @@ function openBook(bookData, filename) {
         localStorage.setItem(`epub-location-${filename}`, location.start.cfi);
         updatePageInfo();
         if (synth && synth.speaking) synth.cancel(); 
-        navInProgress = false; 
     });
 
     rendition.on("click", (e) => showUI());
@@ -231,8 +172,8 @@ function updatePageInfo() {
     } catch(e) {}
 }
 
-prevBtn.addEventListener('click', (e) => { e.stopPropagation(); navigate('prev'); });
-nextBtn.addEventListener('click', (e) => { e.stopPropagation(); navigate('next'); });
+prevBtn.addEventListener('click', (e) => { e.stopPropagation(); rendition.prev(); });
+nextBtn.addEventListener('click', (e) => { e.stopPropagation(); rendition.next(); });
 
 document.body.addEventListener('click', (e) => {
     if (e.target === document.body || e.target === viewer) {
