@@ -73,20 +73,21 @@
 </head>
 <body>
     <script>
-        // V34: Safe-Area Viewer for Stable Navigation
-        const VERSION = 'v34.0';
+        // V35: The "Iron" Pager + Force Purge
+        const VERSION = 'v35.0';
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(registrations => {
                 for (let r of registrations) {
-                    if (r.active && !r.active.scriptURL.includes(VERSION)) {
-                        console.log('Purging old Service Worker...', r.active.scriptURL);
-                        r.unregister();
+                    // Forcefully unreg everything that isn't v35
+                    if (!r.active || !r.active.scriptURL.includes(VERSION)) {
+                        console.log('Force-Kill old SW:', r.active ? r.active.scriptURL : 'pending');
+                        r.unregister().then(() => console.log('SW Killed.'));
                     }
                 }
             });
             caches.keys().then(names => {
                 for (let name of names) {
-                    if (name !== 'epub-reader-' + VERSION) caches.delete(name);
+                    if (!name.includes(VERSION)) caches.delete(name);
                 }
             });
         }
@@ -106,7 +107,7 @@
                     <option value="2.0">2.0x</option>
                 </select>
                 <div class="header-controls">
-                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v34.0</span>
+                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v35.0</span>
                     <button id="tts-trigger" class="upload-btn" style="background-color: var(--accent);">🔊 Vorlesen</button>
                 </div>
 
@@ -149,13 +150,11 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js?v=20.0').then(registration => {
-                    console.log('SW registered: ', registration);
-                }).catch(registrationError => {
-                    console.log('SW registration failed: ', registrationError);
+                navigator.serviceWorker.register('./sw.js?v=35.0').then(registration => {
+                    console.log('V35 SW registered');
                 });
             });
         }
-    </script>
+    </script>  </script>
 </body>
 </html>

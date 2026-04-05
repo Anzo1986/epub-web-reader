@@ -21,7 +21,7 @@ function navigate(direction) {
     setTimeout(() => { navInProgress = false; }, 300);
 }
 
-console.log("App Version: v34.0 (Safe-Area Viewer)");
+console.log("App Version: v35.0 (Iron Pager)");
 
 window.addEventListener('keydown', (e) => {
     if (e.key === "ArrowLeft") navigate('prev');
@@ -79,8 +79,10 @@ function openBook(bookData, filename) {
     book = ePub(bookData, { allowScriptedContent: true });
     
     rendition = book.renderTo("viewer", {
-        width: "100%", height: "100%",
-        flow: "paginated", manager: "default",
+        width: window.innerWidth - 20, // Final check: Matches .viewer-container padding
+        height: window.innerHeight - 150, // Final check: Matches 75px top/bottom
+        flow: "paginated", 
+        manager: "default",
         spread: "none",
         allowScriptedContent: true,
         sandbox: "allow-same-origin allow-scripts allow-popups allow-forms"
@@ -133,9 +135,11 @@ function openBook(bookData, filename) {
         });
     });
     
-    // V34: Force resize to recalculate columns in the new safe area
+    // V35: Iron Pager - Force explicit pixel recalibration
     rendition.on("started", () => {
-        setTimeout(() => rendition.resize(), 500);
+        const w = window.innerWidth - 20;
+        const h = window.innerHeight - 150;
+        setTimeout(() => rendition.resize(w, h), 500);
     });
 
     rendition.themes.register("dark", { "body": { "background": "#0f172a", "color": "#f8fafc" } });
