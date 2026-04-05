@@ -1,4 +1,4 @@
-const CACHE_NAME = 'epub-reader-v8';
+const CACHE_NAME = 'epub-reader-v9';
 const urlsToCache = [
   './',
   './index.html',
@@ -8,7 +8,7 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', event => {
-  self.skipWaiting(); // Force active
+  self.skipWaiting(); 
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -32,11 +32,14 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        return response || fetch(event.request);
-      }
-    )
-  );
+  // Only intercept local requests from the same origin
+  if (event.request.url.startsWith(self.location.origin)) {
+    event.respondWith(
+      caches.match(event.request)
+        .then(response => {
+          return response || fetch(event.request);
+        }
+      )
+    );
+  }
 });
