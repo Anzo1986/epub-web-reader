@@ -37,13 +37,13 @@
         body { top: 0 !important; }
         .skiptranslate { display: none !important; }
 
-        /* V39: Absolute Bounds (Safety Zone) */
+        /* V41: The V1 Rebirth (Pristine Fullscreen) */
         .viewer-container {
             position: absolute;
-            top: 75px;    /* Leave room for Header */
-            bottom: 75px; /* Leave room for Footer/Controls */
-            left: 10px;
-            right: 10px;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             z-index: 1;
         }
 
@@ -73,8 +73,8 @@
 </head>
 <body>
     <script>
-        // V40: Height Constraint Fix
-        const VERSION = 'v40.0';
+        // V41: The V1 Rebirth
+        const VERSION = 'v41.0';
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(registrations => {
                 for (let r of registrations) {
@@ -106,7 +106,7 @@
                     <option value="2.0">2.0x</option>
                 </select>
                 <div class="header-controls">
-                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v40.0</span>
+                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v41.0</span>
                     <button id="tts-trigger" class="upload-btn" style="background-color: var(--accent);">🔊 Vorlesen</button>
                 </div>
 
@@ -149,8 +149,8 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js?v=40.0').then(registration => {
-                    console.log('V40 SW registered');
+                navigator.serviceWorker.register('./sw.js?v=41.0').then(registration => {
+                    console.log('V41 SW registered');
                 });
             });
         }

@@ -21,7 +21,7 @@ function navigate(direction) {
     setTimeout(() => { navInProgress = false; }, 300);
 }
 
-console.log("App Version: v40.0 (Height Constraint Fix)");
+console.log("App Version: v41.0 (The V1 Rebirth)");
 
 window.addEventListener('keydown', (e) => {
     if (e.key === "ArrowLeft") navigate('prev');
@@ -78,48 +78,30 @@ function openBook(bookData, filename) {
     
     book = ePub(bookData, { allowScriptedContent: true });
     
-    // V39: Get strict pixel measurements of the absolute-positioned viewer
-    const bounds = viewer.getBoundingClientRect();
-    
+    // V41: The exact configuration from V1 that worked perfectly
     rendition = book.renderTo("viewer", {
-        width: bounds.width, 
-        height: bounds.height,
-        flow: "paginated", 
-        manager: "default",
+        width: "100%",
+        height: "100%",
         spread: "none",
+        manager: "continuous",
+        flow: "paginated",
         allowScriptedContent: true
-        // Sandbox removed to allow internal pagination metrics to function freely 
     });
 
-    rendition.hooks.content.register((contents) => {
-        // V40: The missing link. HTML/Body must have a strictly forced height
-        // Otherwise, CSS columns grow infinitely downwards = 1 Page per Chapter
-        contents.addStylesheetRules({
-            "html": {
-                "height": "100% !important",
-                "margin": "0 !important",
-                "padding": "0 !important"
-            },
-            "body": {
-                "height": "100% !important",
-                "width": "100% !important",
-                "box-sizing": "border-box !important",
-                "margin": "0 !important",
-                "padding": "0 !important",
-                "background": "transparent !important",
-                "color": "#f8fafc !important",
-                "font-family": "sans-serif !important"
-            },
-            "img": { "max-width": "100% !important", "height": "auto !important", "display": "block", "margin": "20px auto" },
-            "p": { "margin-bottom": "1.5em !important", "line-height": "1.6 !important" }
-        });
-        
-        const doc = contents.document;
-        doc.addEventListener('keydown', (e) => {
-            window.dispatchEvent(new KeyboardEvent('keydown', { key: e.key, code: e.code }));
-        });
-
+    // Dark mode for the iframe content via themes (safe), NOT via hooks (dangerous)
+    rendition.themes.register("dark", {
+        "body": { "background": "transparent !important", "color": "#f8fafc" },
+        "img": { "max-width": "100%", "height": "auto", "display": "block", "margin": "20px auto" },
+        "p": { "margin-bottom": "1.5em", "line-height": "1.6" },
+        "h1, h2, h3, h4": { "color": "#f8fafc" }
+    });
+    rendition.themes.select("dark");
+    
+    // Touch interactions strictly applied via the iframe doc
+    rendition.on("rendered", (e, iframe) => {
+        const doc = iframe.document.documentElement;
         let gestureLocked = false;
+        
         doc.addEventListener('touchstart', (e) => { 
             touchStartX = e.changedTouches[0].screenX; 
             resetUITimer(); 
@@ -136,7 +118,7 @@ function openBook(bookData, filename) {
         });
 
         doc.addEventListener('click', (e) => {
-            const x = e.clientX, w = window.innerWidth;
+            const x = e.clientX, w = iframe.innerWidth || window.innerWidth;
             if (x > w * 0.25 && x < w * 0.75) {
                 if (document.body.classList.contains('hidden-ui')) showUI(); else hideUI();
             } else { 
@@ -147,15 +129,6 @@ function openBook(bookData, filename) {
             }
         });
     });
-    
-    // V39: Absolute bounds calibration
-    rendition.on("started", () => {
-        const b = viewer.getBoundingClientRect();
-        setTimeout(() => rendition.resize(b.width, b.height), 500);
-    });
-
-    rendition.themes.register("dark", { "body": { "background": "#0f172a", "color": "#f8fafc" } });
-    rendition.themes.select("dark");
 
     book.ready.then(() => {
         const savedLocation = localStorage.getItem(`epub-location-${filename}`);
