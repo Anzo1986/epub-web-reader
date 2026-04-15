@@ -74,8 +74,8 @@
 </head>
 <body>
     <script>
-        // V37: Back-to-Basics (REVERT TO WORKING v33 LAYOUT)
-        const VERSION = 'v37.0';
+        // V38: Precision Pagination (External Padding)
+        const VERSION = 'v38.0';
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(registrations => {
                 for (let r of registrations) {
@@ -107,7 +107,7 @@
                     <option value="2.0">2.0x</option>
                 </select>
                 <div class="header-controls">
-                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v37.0</span>
+                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v38.0</span>
                     <button id="tts-trigger" class="upload-btn" style="background-color: var(--accent);">🔊 Vorlesen</button>
                 </div>
 
@@ -150,8 +150,8 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js?v=37.0').then(registration => {
-                    console.log('V37 SW registered');
+                navigator.serviceWorker.register('./sw.js?v=38.0').then(registration => {
+                    console.log('V38 SW registered');
                 });
             });
         }

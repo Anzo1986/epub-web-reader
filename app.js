@@ -21,7 +21,7 @@ function navigate(direction) {
     setTimeout(() => { navInProgress = false; }, 300);
 }
 
-console.log("App Version: v37.0 (Back-to-Basics)");
+console.log("App Version: v38.0 (Precision Pagination)");
 
 window.addEventListener('keydown', (e) => {
     if (e.key === "ArrowLeft") navigate('prev');
@@ -76,6 +76,10 @@ function openBook(bookData, filename) {
     if (book) { try { book.destroy(); } catch(e) {} }
     viewer.innerHTML = '';
     
+    // V38: External boundaries to protect the engine's internal math
+    viewer.style.padding = "70px 15px 70px 15px";
+    viewer.style.boxSizing = "border-box";
+    
     book = ePub(bookData, { allowScriptedContent: true });
     
     rendition = book.renderTo("viewer", {
@@ -90,7 +94,7 @@ function openBook(bookData, filename) {
         contents.addStylesheetRules({
             "body": {
                 "margin": "0 !important",
-                "padding": "60px 20px !important",
+                "padding": "0 !important",
                 "background": "transparent !important",
                 "color": "#f8fafc !important",
                 "font-family": "sans-serif !important"
@@ -133,11 +137,9 @@ function openBook(bookData, filename) {
         });
     });
     
-    // V37: Ensure layout is calibrated for full screen
+    // V38: Simple calibration (relying on the external boundary)
     rendition.on("started", () => {
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-        setTimeout(() => rendition.resize(w, h), 500);
+        setTimeout(() => rendition.resize(), 500);
     });
 
     rendition.themes.register("dark", { "body": { "background": "#0f172a", "color": "#f8fafc" } });
