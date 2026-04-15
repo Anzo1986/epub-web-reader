@@ -37,15 +37,14 @@
         body { top: 0 !important; }
         .skiptranslate { display: none !important; }
 
-        /* Viewer takes FULL screen */
+        /* V39: Absolute Bounds (Safety Zone) */
         .viewer-container {
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            top: 75px;    /* Leave room for Header */
+            bottom: 75px; /* Leave room for Footer/Controls */
+            left: 10px;
+            right: 10px;
             z-index: 1;
-            background-color: var(--bg);
         }
 
         .glass-panel {
@@ -74,8 +73,8 @@
 </head>
 <body>
     <script>
-        // V38: Precision Pagination (External Padding)
-        const VERSION = 'v38.0';
+        // V39: Absolute Bounds Fix
+        const VERSION = 'v39.0';
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(registrations => {
                 for (let r of registrations) {
@@ -107,7 +106,7 @@
                     <option value="2.0">2.0x</option>
                 </select>
                 <div class="header-controls">
-                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v38.0</span>
+                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v39.0</span>
                     <button id="tts-trigger" class="upload-btn" style="background-color: var(--accent);">🔊 Vorlesen</button>
                 </div>
 
@@ -150,8 +149,8 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js?v=38.0').then(registration => {
-                    console.log('V38 SW registered');
+                navigator.serviceWorker.register('./sw.js?v=39.0').then(registration => {
+                    console.log('V39 SW registered');
                 });
             });
         }

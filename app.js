@@ -21,7 +21,7 @@ function navigate(direction) {
     setTimeout(() => { navInProgress = false; }, 300);
 }
 
-console.log("App Version: v38.0 (Precision Pagination)");
+console.log("App Version: v39.0 (Absolute Bounds Fix)");
 
 window.addEventListener('keydown', (e) => {
     if (e.key === "ArrowLeft") navigate('prev');
@@ -76,18 +76,19 @@ function openBook(bookData, filename) {
     if (book) { try { book.destroy(); } catch(e) {} }
     viewer.innerHTML = '';
     
-    // V38: External boundaries to protect the engine's internal math
-    viewer.style.padding = "70px 15px 70px 15px";
-    viewer.style.boxSizing = "border-box";
-    
     book = ePub(bookData, { allowScriptedContent: true });
     
+    // V39: Get strict pixel measurements of the absolute-positioned viewer
+    const bounds = viewer.getBoundingClientRect();
+    
     rendition = book.renderTo("viewer", {
-        width: "100%", height: "100%",
-        flow: "paginated", manager: "default",
+        width: bounds.width, 
+        height: bounds.height,
+        flow: "paginated", 
+        manager: "default",
         spread: "none",
-        allowScriptedContent: true,
-        sandbox: "allow-same-origin allow-scripts allow-popups allow-forms"
+        allowScriptedContent: true
+        // Sandbox removed to allow internal pagination metrics to function freely 
     });
 
     rendition.hooks.content.register((contents) => {
@@ -137,9 +138,10 @@ function openBook(bookData, filename) {
         });
     });
     
-    // V38: Simple calibration (relying on the external boundary)
+    // V39: Absolute bounds calibration
     rendition.on("started", () => {
-        setTimeout(() => rendition.resize(), 500);
+        const b = viewer.getBoundingClientRect();
+        setTimeout(() => rendition.resize(b.width, b.height), 500);
     });
 
     rendition.themes.register("dark", { "body": { "background": "#0f172a", "color": "#f8fafc" } });
