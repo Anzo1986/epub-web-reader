@@ -21,7 +21,7 @@ function navigate(direction) {
     setTimeout(() => { navInProgress = false; }, 300);
 }
 
-console.log("App Version: v42.0 (Explicit Engine Fix)");
+console.log("App Version: v43.0 (Core Engine Re-Alignment)");
 
 window.addEventListener('keydown', (e) => {
     if (e.key === "ArrowLeft") navigate('prev');
@@ -75,32 +75,18 @@ uploadInput.addEventListener('change', function(e) {
 function openBook(bookData, filename) {
     if (book) { try { book.destroy(); } catch(e) {} }
     viewer.innerHTML = '';
-    
-    book = ePub(bookData, { allowScriptedContent: true });
-    
-    // V42: Explicit Engine Fix
-    // 1. Explicit Pixels instead of "100%"
-    // 2. manager: "default" to respect paginated layout logic
-    // 3. Removed spread: none to allow auto-calculation
-    rendition = book.renderTo("viewer", {
-        width: window.innerWidth,
-        height: window.innerHeight,
-        manager: "default",
-        flow: "paginated",
-        allowScriptedContent: true
-    });
 
-    // V42 Layout Fix: Force inner paddings and margins to absolute zero
-    // This stops the text from being cut off on the right by native EPUB padding
-    rendition.hooks.content.register((contents) => {
-        contents.addStylesheetRules({
-            "html": { "padding": "0 !important", "margin": "0 !important" },
-            "body": { 
-                "padding": "0 !important", 
-                "margin": "0 !important", 
-                "box-sizing": "border-box !important" 
-            }
-        });
+    // V43: Remove allowScriptedContent to fix Chrome Mobile Sandbox isolation bugs
+    book = ePub(bookData);
+    
+    // V43: Strict Math.floor bounds calculation and restored 'spread: none'
+    const b = viewer.getBoundingClientRect();
+    rendition = book.renderTo("viewer", {
+        width: Math.floor(b.width),
+        height: Math.floor(b.height),
+        spread: "none",
+        manager: "default",
+        flow: "paginated"
     });
 
     // Dark mode for the iframe content via themes (safe), NOT via hooks (dangerous)

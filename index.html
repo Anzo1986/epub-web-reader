@@ -73,8 +73,8 @@
 </head>
 <body>
     <script>
-        // V42: Explicit Engine Fix
-        const VERSION = 'v42.0';
+        // V43: Core Engine Re-Alignment
+        const VERSION = 'v43.0';
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(registrations => {
                 for (let r of registrations) {
@@ -106,7 +106,7 @@
                     <option value="2.0">2.0x</option>
                 </select>
                 <div class="header-controls">
-                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v42.0</span>
+                    <span id="version-tag" style="font-size: 0.7rem; opacity: 0.6; margin-right: 10px;">v43.0</span>
                     <button id="tts-trigger" class="upload-btn" style="background-color: var(--accent);">🔊 Vorlesen</button>
                 </div>
 
@@ -149,8 +149,8 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js?v=42.0').then(registration => {
-                    console.log('V42 SW registered');
+                navigator.serviceWorker.register('./sw.js?v=43.0').then(registration => {
+                    console.log('V43 SW registered');
                 });
             });
         }
