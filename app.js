@@ -21,7 +21,7 @@ function navigate(direction) {
     setTimeout(() => { navInProgress = false; }, 300);
 }
 
-console.log("App Version: v39.0 (Absolute Bounds Fix)");
+console.log("App Version: v40.0 (Height Constraint Fix)");
 
 window.addEventListener('keydown', (e) => {
     if (e.key === "ArrowLeft") navigate('prev');
@@ -92,8 +92,18 @@ function openBook(bookData, filename) {
     });
 
     rendition.hooks.content.register((contents) => {
+        // V40: The missing link. HTML/Body must have a strictly forced height
+        // Otherwise, CSS columns grow infinitely downwards = 1 Page per Chapter
         contents.addStylesheetRules({
+            "html": {
+                "height": "100% !important",
+                "margin": "0 !important",
+                "padding": "0 !important"
+            },
             "body": {
+                "height": "100% !important",
+                "width": "100% !important",
+                "box-sizing": "border-box !important",
                 "margin": "0 !important",
                 "padding": "0 !important",
                 "background": "transparent !important",
