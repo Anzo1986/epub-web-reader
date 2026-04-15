@@ -1,4 +1,4 @@
-const CACHE_NAME = 'epub-reader-v41.0';
+const CACHE_NAME = 'epub-reader-v42.0';
 const urlsToCache = [
   './',
   './index.html',

@@ -21,7 +21,7 @@ function navigate(direction) {
     setTimeout(() => { navInProgress = false; }, 300);
 }
 
-console.log("App Version: v41.0 (The V1 Rebirth)");
+console.log("App Version: v42.0 (Explicit Engine Fix)");
 
 window.addEventListener('keydown', (e) => {
     if (e.key === "ArrowLeft") navigate('prev');
@@ -78,14 +78,29 @@ function openBook(bookData, filename) {
     
     book = ePub(bookData, { allowScriptedContent: true });
     
-    // V41: The exact configuration from V1 that worked perfectly
+    // V42: Explicit Engine Fix
+    // 1. Explicit Pixels instead of "100%"
+    // 2. manager: "default" to respect paginated layout logic
+    // 3. Removed spread: none to allow auto-calculation
     rendition = book.renderTo("viewer", {
-        width: "100%",
-        height: "100%",
-        spread: "none",
-        manager: "continuous",
+        width: window.innerWidth,
+        height: window.innerHeight,
+        manager: "default",
         flow: "paginated",
         allowScriptedContent: true
+    });
+
+    // V42 Layout Fix: Force inner paddings and margins to absolute zero
+    // This stops the text from being cut off on the right by native EPUB padding
+    rendition.hooks.content.register((contents) => {
+        contents.addStylesheetRules({
+            "html": { "padding": "0 !important", "margin": "0 !important" },
+            "body": { 
+                "padding": "0 !important", 
+                "margin": "0 !important", 
+                "box-sizing": "border-box !important" 
+            }
+        });
     });
 
     // Dark mode for the iframe content via themes (safe), NOT via hooks (dangerous)
